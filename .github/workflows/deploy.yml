@@ -1,0 +1,71 @@
+name: Push-to-EC2
+
+on:
+  push:
+    branches:
+      - main  # Triggers on push to main branch
+
+jobs:
+  deploy:
+    name: Deploy to EC2 on main branch push
+    runs-on: ubuntu-latest
+    timeout-minutes: 60   # extend job timeout
+
+    steps:
+      - name: Checkout the files
+        uses: actions/checkout@v2
+
+      - name: Deploy to Server
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_KEY }}
+          REMOTE_HOST: ${{ secrets.EC2_HOST }}
+          REMOTE_USER: ${{ secrets.EC2_USERNAME }}
+          TARGET: ${{ secrets.EC2_TARGETDIR }}
+
+      - name: Execute remote SSH commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_KEY }}
+          timeout: 60s
+          command_timeout: 40m
+          script: |
+            cd /var/www/html/martxmart
+
+            git config --global --add safe.directory /var/www/html/martxmart
+            git pull origin main
+            npm install --legacy-peer-deps
+
+            # Write environment variables to .env file
+            cat > .env <<EOL
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            DIRECT_URL=${{ secrets.DIRECT_URL }}
+            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }}
+            NEXT_PUBLIC_RAZORPAY_KEY_ID=${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            EMAIL_USERNAME=${{ secrets.EMAIL_USERNAME }}
+            EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
+            CHAT_API=${{ secrets.CHAT_API }}
+            ELASTICSEARCH_URL=${{ secrets.ELASTICSEARCH_URL }}
+            ELASTICSEARCH_USERNAME=${{ secrets.ELASTICSEARCH_USERNAME }}
+            ELASTICSEARCH_PASSWORD=${{ secrets.ELASTICSEARCH_PASSWORD }}
+            FAST2SMS_API_KEY=${{ secrets.FAST2SMS_API_KEY }}
+            FAST2SMS_SENDER_ID=${{ secrets.FAST2SMS_SENDER_ID }}
+            FAST2SMS_MESSAGE_ID=${{ secrets.FAST2SMS_MESSAGE_ID }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            LANGBASE_API_KEY=${{ secrets.LANGBASE_API_KEY }}
+            EOL
+
+            # Build and restart app
+            npm run build
+            pm2 restart next-app || pm2 start npm --name "next-app" -- start --prefix /var/www/html/martxmart

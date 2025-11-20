@@ -1,0 +1,56 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyJWT } from "@/utils/auth";
+
+export async function POST(request: Request) {
+  try {
+    const token = (await cookies()).get("token")?.value;
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const decoded = await verifyJWT(token);
+    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { code, cartTotal } = await request.json();
+    
+    if (!code || !cartTotal) {
+      return NextResponse.json({ error: "Coupon code and cart total are required" }, { status: 400 });
+    }
+
+    const coupon = await prisma.coupon.findFirst({
+      where: {
+        code: code.toUpperCase(),
+        isActive: true,
+        isDeleted: false,
+        expiresAt: {
+          gt: new Date()
+        }
+      }
+    });
+
+    if (!coupon) {
+      return NextResponse.json({ error: "Invalid or expired coupon code" }, { status: 400 });
+    }
+
+    const discountAmount = (cartTotal * coupon.discount) / 100;
+    const finalTotal = Math.max(0, cartTotal - discountAmount);
+
+    return NextResponse.json({
+      valid: true,
+      coupon: {
+        code: coupon.code,
+        discount: coupon.discount
+      },
+      discountAmount,
+      finalTotal
+    });
+
+  } catch (error) {
+    console.error("Error validating coupon:", error);
+    return NextResponse.json({ error: "Failed to validate coupon" }, { status: 500 });
+  }
+}
