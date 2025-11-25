@@ -1,107 +1,89 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { ApiError, handleApiError } from "@/lib/api-error";
+import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { sendOTP } from "@/utils/messageSender";
-import {generateOTP,hashPassword, signJWT} from "@/utils/auth"
-import {welcomeEmail} from "@/email/template";
-import { cookies } from "next/headers";
+import { hashPassword } from "@/utils/auth";
+import { generateAndSendOTP } from "@/lib/auth";
+import { ApiError, handleApiError } from "@/lib/api-error";
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must not exceed 50 characters"),
-  phone: z.string().regex(/^\d{10}$/, "Phone number must be exactly 10 digits"),
-  email: z.string().email("Invalid email address").optional().transform(e => e || undefined),
-  password: z.string().min(6, "Password must be at least 8 characters")
+  name: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be less than 50 characters"),
+  phone: z.string().regex(/^\+?91[6-9]\d{9}$|^[6-9]\d{9}$/, "Invalid phone number format"),
+  email: z.string().email("Invalid email format").optional(),
+  password: z.string().min(8, "Password must be at least 8 characters")
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+      "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"),
 });
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const validatedData = registerSchema.parse(body);
-    const { name, phone, email } = validatedData;
-    
-    // Hash password
-    const hashedPassword = await hashPassword(validatedData.password);
+    const { name, phone, email, password } = registerSchema.parse(body);
 
-    // Check if user already exists with phone or email
-    const existingUserByPhone = await prisma.user.findUnique({
-      where: { phone,email }
+    // Clean phone number
+    const cleanPhone = phone.replace(/^\+?91/, "").trim();
+    
+    // Check if user already exists with phone
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        phone: cleanPhone
+      }
     });
 
-    if (existingUserByPhone) {
-      throw ApiError.badRequest("A user with this phone number already exists");
+    if (existingUser) {
+      throw ApiError.badRequest("Phone number already registered");
     }
 
-    if (email) {
-      const existingUserByEmail = await prisma.user.findUnique({
-        where: { email }
-      });
-      if (existingUserByEmail) {
-        throw ApiError.badRequest("A user with this email already exists");
-      }
-    }
-    // otp expiry is 5min
-    const otp=generateOTP();
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+    // Hash password
+    const hashedPassword = await hashPassword(password);
 
-  
-    // Create user with pending verification
+    // Create user with pending verification status
     const user = await prisma.user.create({
       data: {
-        name,
-        phone,
-        email,
+        name: name,
+        phone: cleanPhone,
+        email: email ? email.toLowerCase() : null,
         password: hashedPassword,
-        otp,
-        otpExpiresAt,
-        isVerified: false
+        role: "CUSTOMER",
+        isVerified: false, // User must verify OTP before activation
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        role: true,
+        isVerified: true,
+        createdAt: true,
       }
     });
 
-    // Send OTP
-    const result = await sendOTP(phone, otp);
-    if (result.type === "error") {
-      // Rollback user creation if OTP sending fails
+    // Generate and send OTP for phone verification only
+    const otpResult = await generateAndSendOTP(
+      cleanPhone, 
+      null, // No email, SMS only
+      "CUSTOMER_REGISTRATION"
+    );
+
+    if (!otpResult.success) {
+      // If OTP sending fails, delete the created user
       await prisma.user.delete({ where: { id: user.id } });
-      throw ApiError.internal(result.message);
+      throw ApiError.internal("Failed to send verification OTP. Please try again.");
     }
-
-    await prisma.user.update({
-      where: { phone: phone },
-      data: {
-        otp,
-        otpExpiresAt,
-        isVerified: true, // Set isVerified to true ,
-      },
-    });
-    // TODO send welcome email to user
-    if (email) {
-      await welcomeEmail(name, email);
-    }
-
-     const token = await signJWT({
-            id: user.id,
-            email: user.email || "",
-            name: user.name,
-            role: user.role,
-          });
-          const cookieStore = await cookies();
-          cookieStore.set({
-            name: "token",
-            value: token,
-            httpOnly: true,
-            path: "/",
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 60 * 60 * 24 * 7, // 1 week
-          });
 
     return NextResponse.json({
-      message: "Registration initiated. Please verify your phone number.",
-      id: user.id,
-      name: user.name,
-      email: user.email,
-        }, { status: 201 });
+      message: "Registration successful. Please verify your phone with the OTP sent.",
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+      }
+    }, { status: 201 });
+
   } catch (error) {
+    console.error("Registration error:", error);
     return handleApiError(error);
   }
 }

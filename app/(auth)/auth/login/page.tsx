@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,155 +20,87 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Phone, Mail, ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, Mail, Phone, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const phoneLoginSchema = z.object({
-  phone: z
-    .string()
-    .length(10, "Phone number must be exactly 10 digits")
-    .regex(/^[6-9]\d{9}$/, "Phone number must start with 6, 7, 8, or 9"),
-});
+const loginSchema = z.object({
+  identifier: z.string().min(1, "Please enter phone number or email"),
+  password: z.string().min(1, "Password is required"),
+  loginMethod: z.enum(["phone", "email"]),
+}).refine(
+  (data) => {
+    if (data.loginMethod === "phone") {
+      return /^[6-9]\d{9}$/.test(data.identifier);
+    } else {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.identifier);
+    }
+  },
+  {
+    message: "Invalid phone number or email format",
+    path: ["identifier"],
+  }
+);
 
 export default function CustomerLoginPage() {
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1);
-  const [phone, setPhone] = useState("");
-  const [otpValues, setOtpValues] = useState(["", "", "", ""]);
-  const [canResend, setCanResend] = useState(true);
-  const [resendTimer, setResendTimer] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
   const router = useRouter();
   const { user, setUser } = useAuth();
+
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset,
-  } = useForm<z.infer<typeof phoneLoginSchema>>({
-    resolver: zodResolver(phoneLoginSchema),
+    watch,
+  } = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      loginMethod: "phone",
+    },
   });
 
-  // Countdown timer for resend OTP
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (resendTimer > 0) {
-      timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [resendTimer]);
+  const identifierValue = watch("identifier");
 
-  const onSubmitPhone = async (data: z.infer<typeof phoneLoginSchema>) => {
-    setLoading(true);
-    setPhone(data.phone);
-    
-    try {
-      // First, generate and send OTP
-      const otpResponse = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: data.phone,
-          purpose: "CUSTOMER_LOGIN",
-        }),
-      });
-
-      const otpResult = await otpResponse.json();
-
-      if (!otpResponse.ok) {
-        toast.error(otpResult.message || "Failed to send OTP");
-        setLoading(false);
-        return;
-      }
-
-      toast.success("OTP sent successfully");
-      setStep(2);
-    } catch (error: any) {
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  const isEmail = (value: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   };
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return;
-    const newOtpValues = [...otpValues];
-    newOtpValues[index] = value;
-    setOtpValues(newOtpValues);
-
-    if (value && index < 3) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
-    }
-
-    if (newOtpValues.every((val) => val !== "")) {
-      onSubmitOTP(newOtpValues.join(""));
-    }
-  };
-
-  const onSubmitOTP = async (otp: string) => {
-    if (otp.length !== 4 || !/^\d{4}$/.test(otp)) {
-      toast.error("Please enter a valid 4-digit OTP.");
-      return;
-    }
+  const onSubmit = async (data: z.infer<typeof loginSchema>) => {
     setLoading(true);
     
     try {
-      const result = await signIn("customer-mobile-otp", {
-        phone: phone,
-        otp: otp,
+      // Determine if identifier is email or phone
+      const method = isEmail(data.identifier) ? "email" : "phone";
+      
+      // Use NextAuth credentials provider for login
+      const result = await signIn("credentials", {
         redirect: false,
+        [method]: data.identifier,
+        password: data.password,
       });
 
       if (result?.error) {
-        toast.error(result.error || "Invalid OTP");
+        toast.error(result.error || "Invalid credentials");
       } else if (result?.ok) {
         toast.success("Login successful!");
         
         // Update auth store
-        const session = await fetch("/api/auth/session").then(r => r.json());
-        if (session?.user) {
-          setUser(session.user);
+        try {
+          const session = await fetch("/api/auth/session").then(r => r.json());
+          if (session?.user) {
+            setUser(session.user);
+          }
+        } catch (error) {
+          console.error("Failed to get session:", error);
         }
         
         router.push("/");
       }
     } catch (error: any) {
-      toast.error("Failed to verify OTP. Please try again.");
+      toast.error("Failed to login. Please try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResendOTP = async () => {
-    if (!canResend) return;
-    
-    setCanResend(false);
-    setResendTimer(30); // 30 seconds cooldown
-    
-    try {
-      const response = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: phone,
-          purpose: "CUSTOMER_LOGIN",
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        toast.success("OTP resent successfully");
-        setOtpValues(["", "", "", ""]);
-        setTimeout(() => setCanResend(true), 30000);
-      } else {
-        toast.error(result.message);
-        setCanResend(true);
-        setResendTimer(0);
-      }
-    } catch (error: any) {
-      toast.error("Failed to resend OTP. Please try again.");
-      setCanResend(true);
-      setResendTimer(0);
     }
   };
 
@@ -202,142 +134,132 @@ export default function CustomerLoginPage() {
               />
             </Link>
             <CardTitle className="text-3xl font-bold text-gray-900">
-              {step === 1 ? "Customer Login" : "Verify Your Phone"}
+              Customer Login
             </CardTitle>
             <CardDescription className="text-gray-600">
-              {step === 1
-                ? "Enter your mobile number to receive OTP"
-                : "Enter the 4-digit code sent to your phone"}
+              Enter your credentials to sign in
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            <AnimatePresence mode="wait">
-              {step === 1 ? (
-                <motion.form
-                  key="phone-form"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                  onSubmit={handleSubmit(onSubmitPhone)}
-                  className="space-y-6"
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Login Method Toggle */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <Button
+                  type="button"
+                  variant={loginMethod === "phone" ? "default" : "ghost"}
+                  className={`flex-1 ${loginMethod === "phone" ? "bg-orange-600 hover:bg-orange-700" : ""}`}
+                  onClick={() => setLoginMethod("phone")}
                 >
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="phone"
-                      className="text-gray-700 font-medium"
-                    >
-                      Mobile Number
-                    </Label>
-                    <div className="relative">
+                  <Phone className="w-4 h-4 mr-2" />
+                  Phone
+                </Button>
+                <Button
+                  type="button"
+                  variant={loginMethod === "email" ? "default" : "ghost"}
+                  className={`flex-1 ${loginMethod === "email" ? "bg-orange-600 hover:bg-orange-700" : ""}`}
+                  onClick={() => setLoginMethod("email")}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email
+                </Button>
+              </div>
+
+              {/* Identifier Field */}
+              <div className="space-y-2">
+                <Label htmlFor="identifier" className="text-gray-700 font-medium">
+                  {loginMethod === "phone" ? "Phone Number" : "Email Address"}
+                </Label>
+                <div className="relative">
+                  {loginMethod === "phone" ? (
+                    <>
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-medium text-sm">
                         +91
                       </span>
                       <Input
-                        id="phone"
+                        id="identifier"
                         type="tel"
                         inputMode="numeric"
                         placeholder="9876543210"
                         maxLength={10}
-                        {...register("phone")}
+                        {...register("identifier")}
                         className="pl-12 py-3 text-lg border-gray-300 focus:ring-orange-500 focus:border-orange-500"
                         disabled={loading}
                         autoComplete="tel"
-                        autoFocus
                       />
-                    </div>
-                    {errors.phone && (
-                      <p className="text-sm text-red-500">{errors.phone.message}</p>
-                    )}
-                  </div>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Input
+                        id="identifier"
+                        type="email"
+                        placeholder="john@example.com"
+                        {...register("identifier")}
+                        className="pl-10 py-3 text-lg border-gray-300 focus:ring-orange-500 focus:border-orange-500"
+                        disabled={loading}
+                        autoComplete="email"
+                      />
+                    </>
+                  )}
+                </div>
+                {errors.identifier && (
+                  <p className="text-sm text-red-500">{errors.identifier.message}</p>
+                )}
+              </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full bg-orange-600 hover:bg-orange-700 transition-all duration-200 text-white font-medium py-3"
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-700 font-medium">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    {...register("password")}
+                    className="pl-10 pr-10 py-3 text-lg border-gray-300 focus:ring-orange-500 focus:border-orange-500"
                     disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sending OTP...
-                      </>
-                    ) : (
-                      <>
-                        <Phone className="mr-2 h-4 w-4" />
-                        Send OTP
-                      </>
-                    )}
-                  </Button>
-                </motion.form>
-              ) : (
-                <motion.div
-                  key="otp-form"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-6"
-                >
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-4">
-                      OTP sent to +91 {phone}
-                    </p>
-                    
-                    <div className="flex justify-center gap-3 mb-6">
-                      {otpValues.map((value, index) => (
-                        <Input
-                          key={index}
-                          id={`otp-${index}`}
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={1}
-                          value={value}
-                          onChange={(e) => handleOtpChange(index, e.target.value)}
-                          className="w-12 h-12 text-xl text-center rounded-lg border-gray-300 focus:ring-orange-500 focus:border-orange-500"
-                          disabled={loading}
-                          autoFocus={index === 0}
-                        />
-                      ))}
-                    </div>
-
-                    <p className="text-sm text-center text-gray-500 mb-4">
-                      Didn't receive the code?{" "}
-                      <Button
-                        variant="link"
-                        className="text-orange-600 p-0 font-medium hover:text-orange-700"
-                        onClick={handleResendOTP}
-                        disabled={loading || !canResend}
-                      >
-                        Resend {canResend ? "" : `(${resendTimer}s)`}
-                      </Button>
-                    </p>
-                  </div>
-
+                    autoComplete="current-password"
+                  />
                   <Button
                     type="button"
-                    variant="outline"
-                    className="w-full border-gray-300 hover:bg-orange-50 transition-all duration-200"
-                    onClick={() => {
-                      setStep(1);
-                      reset();
-                      setOtpValues(["", "", "", ""]);
-                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                    onClick={() => setShowPassword(!showPassword)}
                     disabled={loading}
                   >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Change phone number
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-500" />
+                    )}
                   </Button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-red-500">{errors.password.message}</p>
+                )}
+              </div>
 
-                  {loading && (
-                    <div className="flex items-center justify-center">
-                      <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
-                      <span className="ml-2 text-sm text-gray-600">Verifying OTP...</span>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full bg-orange-600 hover:bg-orange-700 transition-all duration-200 text-white font-medium py-3"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
+              </Button>
+            </form>
 
             <div className="mt-6 text-center text-sm space-y-2">
               <p>
@@ -347,6 +269,15 @@ export default function CustomerLoginPage() {
                   className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
                 >
                   Sign up
+                </Link>
+              </p>
+              
+              <p>
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
+                >
+                  Forgot password?
                 </Link>
               </p>
               

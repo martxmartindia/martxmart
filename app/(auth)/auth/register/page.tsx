@@ -24,9 +24,9 @@ const registerSchema = z.object({
   email: z.string().email("Invalid email address").optional(),
   password: z
     .string()
-    .min(6, "Password must be at least 6 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number"),
+    .min(8, "Password must be at least 8 characters")
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+      "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"),
 });
 
 export default function RegisterPage() {
@@ -101,19 +101,22 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      const response = await fetch("/api/auth/verify-otp", {
+      const response = await fetch("/api/auth/verify-registration-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: registrationData.phone, otp }),
-        credentials: "include",
+        body: JSON.stringify({ 
+          phone: registrationData.phone, 
+          otp,
+          fullName: registrationData.name
+        }),
       });
       const result = await response.json();
 
       if (response.ok) {
-        toast.success("Registration successful");
+        toast.success("Account activated successfully! You can now login.");
         router.push("/auth/login");
       } else {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to verify OTP");
       }
     } catch (error) {
       toast.error("Something went wrong");
@@ -225,7 +228,7 @@ export default function RegisterPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-gray-700 font-medium">
-                      Email (Optional)
+                      Email
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />

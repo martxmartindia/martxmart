@@ -4,7 +4,6 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/utils/auth";
 import { sendOTP } from "@/utils/messageSender";
-import bcryptjs from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -18,7 +17,7 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/login",
   },
   providers: [
-    // Customer Mobile OTP Provider
+    // Customer Mobile OTP Provider (Legacy - kept for backward compatibility)
     CredentialsProvider({
       id: "customer-mobile-otp",
       name: "Customer Mobile OTP",
@@ -95,7 +94,115 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Customer Credentials Provider (Phone + Password)
+    // New Secure Customer Credentials Provider (Phone + Password)
+    CredentialsProvider({
+      id: "customer-secure-phone",
+      name: "Customer Phone & Password",
+      credentials: {
+        phone: { label: "Phone Number", type: "tel" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials, req) {
+        if (!credentials?.phone || !credentials?.password) {
+          return null;
+        }
+
+        try {
+          const cleanPhone = credentials.phone.replace(/^\+?91/, "").trim();
+          
+          // Find verified customer user by phone
+          const user = await prisma.user.findUnique({
+            where: { 
+              phone: cleanPhone,
+              role: "CUSTOMER",
+              isVerified: true,
+              isDeleted: false,
+            },
+          });
+
+          if (!user || !user.password) {
+            return null;
+          }
+
+          // Verify password
+          const isValidPassword = await verifyPassword(
+            credentials.password,
+            user.password
+          );
+
+          if (!isValidPassword) {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            image: user.image,
+          };
+        } catch (error) {
+          console.error("Secure customer phone credentials authorization error:", error);
+          return null;
+        }
+      },
+    }),
+
+    // New Secure Customer Credentials Provider (Email + Password)
+    CredentialsProvider({
+      id: "customer-secure-email",
+      name: "Customer Email & Password",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials, req) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        try {
+          // Find verified customer user by email
+          const user = await prisma.user.findUnique({
+            where: { 
+              email: credentials.email.toLowerCase(),
+              role: "CUSTOMER",
+              isVerified: true,
+              isDeleted: false,
+            },
+          });
+
+          if (!user || !user.password) {
+            return null;
+          }
+
+          // Verify password
+          const isValidPassword = await verifyPassword(
+            credentials.password,
+            user.password
+          );
+
+          if (!isValidPassword) {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            image: user.image,
+          };
+        } catch (error) {
+          console.error("Secure customer email credentials authorization error:", error);
+          return null;
+        }
+      },
+    }),
+
+    // Legacy Customer Credentials Provider (Phone + Password) - Backward compatibility
     CredentialsProvider({
       id: "customer-phone-credentials",
       name: "Customer Phone Credentials",
@@ -145,7 +252,7 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Customer Credentials Provider (Email + Password)
+    // Legacy Customer Credentials Provider (Email + Password) - Backward compatibility
     CredentialsProvider({
       id: "customer-email-credentials",
       name: "Customer Email Credentials",
@@ -390,12 +497,24 @@ export async function generateAndSendOTP(phone: string, email: string, purpose: 
 
   try {
     // Clean up existing OTPs for this phone/email and purpose
+    const orConditions: any[] = [];
+    
+    if (cleanPhone) {
+      orConditions.push({ phone: cleanPhone });
+    }
+    
+    if (cleanEmail) {
+      orConditions.push({ email: cleanEmail });
+    }
+
+    // If neither phone nor email is provided, return error
+    if (orConditions.length === 0) {
+      return { success: false, message: "Phone or email is required" };
+    }
+
     const updateData: any = {
       where: {
-        OR: [
-          { phone: cleanPhone },
-          { email: cleanEmail }
-        ],
+        OR: orConditions,
         purpose: purpose as any,
         status: "PENDING",
         isUsed: false,
@@ -421,35 +540,15 @@ export async function generateAndSendOTP(phone: string, email: string, purpose: 
       data: otpData,
     });
 
-    // Send OTP via SMS if phone is provided
+    // Send OTP via SMS only
     if (cleanPhone) {
       const smsResult = await sendOTP(cleanPhone, otp);
       if (smsResult.type === "error") {
         console.error("SMS OTP failed:", smsResult.message);
         throw new Error(smsResult.message);
       }
-    }
-
-    // Send OTP via Email if email is provided
-    if (cleanEmail) {
-      const { sendEmail } = await import("@/lib/email");
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #f97316;">OTP Verification</h2>
-          <p>Dear User,</p>
-          <p>Your OTP for verification is: <strong style="font-size: 24px; color: #f97316;">${otp}</strong></p>
-          <p>This OTP is valid for 5 minutes and can be used only once.</p>
-          <p>If you didn't request this OTP, please ignore this email.</p>
-          <br>
-          <p>Thank you,<br>MartXMart Team</p>
-        </div>
-      `;
-
-      await sendEmail({
-        to: cleanEmail,
-        subject: "Your OTP Verification Code",
-        html: emailHtml,
-      });
+    } else {
+      return { success: false, message: "Phone number is required" };
     }
 
     return { success: true, message: "OTP sent successfully" };
@@ -459,17 +558,17 @@ export async function generateAndSendOTP(phone: string, email: string, purpose: 
   }
 }
 
-export async function verifyOTP(phone: string, email: string, otp: string, purpose: string) {
+export async function verifyOTP(phone: string, otp: string, purpose: string) {
   const cleanPhone = phone ? phone.replace(/^\+?91/, "").trim() : null;
-  const cleanEmail = email ? email.toLowerCase().trim() : null;
 
   try {
+    if (!cleanPhone) {
+      return { success: false, message: "Phone number is required" };
+    }
+
     const otpRecord = await prisma.oTPCode.findFirst({
       where: {
-        OR: [
-          { phone: cleanPhone },
-          { email: cleanEmail }
-        ],
+        phone: cleanPhone,
         code: otp,
         purpose: purpose as any,
         status: "PENDING",

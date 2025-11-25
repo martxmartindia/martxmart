@@ -6,40 +6,29 @@ import { z } from "zod";
 
 const verifyOtpSchema = z
   .object({
-    phone: z.string().min(10, "Invalid phone number").optional(),
-    email: z.string().email("Invalid email address").optional(),
+    phone: z.string().regex(/^\+?91[6-9]\d{9}$|^[6-9]\d{9}$/, "Invalid phone number format"),
     otp: z
       .string()
       .length(4, "OTP must be 4 digits")
       .regex(/^\d+$/, "OTP must contain only numbers"),
-  })
-  .refine((data) => data.phone || data.email, {
-    message: "Either phone or email is required",
-    path: ["identifier"],
   });
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { phone, email, otp } = verifyOtpSchema.parse(body);
+    const { phone, otp } = verifyOtpSchema.parse(body);
 
-    // Clean and validate identifier
-    const identifierValue = phone ? phone.replace(/^\+?91/, "").trim() : email;
+    // Clean phone number
+    const cleanPhone = phone.replace(/^\+?91/, "").trim();
 
-    if (phone && !/^\d{10}$/.test(identifierValue as string)) {
+    if (!/^\d{10}$/.test(cleanPhone)) {
       throw ApiError.badRequest("Invalid phone number format. Must be 10 digits.");
     }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifierValue as string)) {
-      throw ApiError.badRequest("Invalid email address format");
-    }
 
-    // Find user by phone or email
+    // Find user by phone
     const user = await prisma.user.findFirst({
       where: {
-        OR: [
-          phone ? { phone: identifierValue } : {},
-          email ? { email: identifierValue } : {},
-        ].filter(Boolean),
+        phone: cleanPhone,
       },
       select: {
         id: true,
@@ -53,7 +42,7 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      throw ApiError.notFound("User not found with the provided phone or email");
+      throw ApiError.notFound("User not found with the provided phone number");
     }
 
     // Verify OTP
