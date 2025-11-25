@@ -53,7 +53,7 @@ export async function POST(req: Request) {
 
     // Generate and send OTP for password recovery
     const otpResult = await generateAndSendOTP(
-      user.phone, 
+      user.phone || "", // Fallback to empty string if phone is null
       null, // No email
       "FORGOT_PASSWORD"
     );

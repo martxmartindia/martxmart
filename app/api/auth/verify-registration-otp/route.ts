@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
     // Verify OTP for registration
     const otpResult = await verifyOTP(
-      user.phone,
+      user.phone || "", // Fallback to empty string if phone is null
       otp,
       "CUSTOMER_REGISTRATION"
     );

@@ -66,7 +66,6 @@ export async function POST(req: Request) {
     // Verify OTP for password reset
     const otpResult = await verifyOTP(
       user.phone || "",
-      user.email || "",
       otp,
       "FORGOT_PASSWORD"
     );

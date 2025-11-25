@@ -489,7 +489,7 @@ export const authOptions: NextAuthOptions = {
 };
 
 // Helper functions for OTP management
-export async function generateAndSendOTP(phone: string, email: string, purpose: string) {
+export async function generateAndSendOTP(phone: string, email: string | null | undefined, purpose: string) {
   const cleanPhone = phone ? phone.replace(/^\+?91/, "").trim() : null;
   const cleanEmail = email ? email.toLowerCase().trim() : null;
   const otp = Math.floor(1000 + Math.random() * 9000).toString();
