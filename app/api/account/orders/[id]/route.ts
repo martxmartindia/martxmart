@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 import { z } from "zod";
 
 // Define schema for UUID validation
@@ -57,18 +56,16 @@ export async function GET(
       return NextResponse.json({ error: parsedId.error.message }, { status: 400 });
     }
 
-    // Check authentication
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized: No token provided" }, { status: 401 });
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id;
+    
+    const userId = user.id;
 
     // Fetch order with necessary fields
     const order = await prisma.order.findUnique({

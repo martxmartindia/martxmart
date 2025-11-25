@@ -1,18 +1,20 @@
-import { verifyJWT } from "@/utils/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 export async function GET(req: NextRequest) {
   try {
-    // get accesstoken from cookies
-    const token = req.cookies.get("token")?.value;
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-    const user = await verifyJWT(token);
-    if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const userId = user.payload.id;
-    const userRole = user.payload.role;
+    const userId = user.id;
+    const userRole = user.role;
 
     // Define base select object for all roles
     const baseSelect = {
@@ -78,17 +80,20 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const token = req.cookies.get("token")?.value;
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const user = await verifyJWT(token);
-    if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
     const body = await req.json();
     const { name, email, phone } = body;
 
     const updatedUser = await prisma.user.update({
-      where: { id: user.payload.id as string },
+      where: { id: user.id as string },
       data: {
         name: name,
         email: email,
@@ -116,17 +121,20 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const token = req.cookies.get("token")?.value;
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const user = await verifyJWT(token);
-    if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
     const body = await req.json();
     const { reason } = body;
 
     await prisma.user.update({
-      where: { id: user.payload.id as string  },
+      where: { id: user.id as string  },
       data: {
         isDeleted: true,
         deletionRequestedAt: new Date(),

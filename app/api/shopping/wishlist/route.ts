@@ -1,24 +1,19 @@
 import { NextResponse } from "next/server"
-import jwt from "jsonwebtoken"
 import { prisma as db } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
+
 export async function GET(request: Request) {
   try {
-      // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded =await verifyJWT(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id as string;
+    
+    const userId = user.id as string;
 
     const wishlistItems = await db.wishlist.findMany({
       where: { userId: userId},
@@ -57,19 +52,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id as string
+    
+    const userId = user.id as string
     const { shoppingId } = await request.json()
 
     // Check if already in wishlist
@@ -100,19 +92,16 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id as string
+    
+    const userId = user.id as string
     const { searchParams } = new URL(request.url)
     const shoppingId = searchParams.get("shoppingId")
 

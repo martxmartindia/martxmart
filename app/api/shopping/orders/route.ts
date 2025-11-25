@@ -3,25 +3,20 @@ import { prisma as db } from "@/lib/prisma";
 import { PaymentStatus } from "@prisma/client";
 import razorpay from "@/lib/razorpay";
 import { sendEmail, emailTemplates } from "@/lib/email";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 export async function GET(request: Request) {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value;
-
-    if (!token) {
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    
+    const userId = user.id as string;
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get("page") || "1");
     const limit = Number(searchParams.get("limit") || "10");
@@ -84,20 +79,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value;
-
-    if (!token) {
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    
+    const userId = user.id as string;
 
     const { shippingAddressId, billingAddressId, paymentMethod, notes, couponCode, discountAmount } =
       await request.json();
@@ -216,10 +207,10 @@ if (payment) {
     // Send confirmation email
     try {
       await sendEmail({
-        to: String(decoded.payload.email!),
+        to: String(user.email!),
         subject: `Order Confirmation - ${orderNumber}`,
         html: emailTemplates.orderConfirmation({
-          customerName: decoded.payload.name,
+          customerName: user.name,
           orderNumber,
           totalAmount,
           paymentMethod,

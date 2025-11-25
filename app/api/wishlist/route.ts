@@ -1,26 +1,19 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 
 export async function GET() {
   try {
-    // Check if user is authenticated
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-
-    // @ts-expect-error - JWT payload type is dynamic
-    const userId = decoded.id
+    const userId = user.id
 
     // Get wishlist items
     const wishlistItems = await prisma.wishlist.findMany({
@@ -53,21 +46,16 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    // Check if user is authenticated
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // @ts-expect-error - JWT payload type is dynamic
-    const userId = decoded.id
+    const userId = user.id
 
     const { productId } = await req.json()
 

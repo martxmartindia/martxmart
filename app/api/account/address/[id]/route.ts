@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 
 export async function GET(req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -11,20 +10,17 @@ export async function GET(req: Request,
     if (!id) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })    
     }
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id
+    
+    const userId = user.id
 
     // Get address
     const address = await prisma.address.findUnique({
@@ -55,20 +51,17 @@ export async function PUT(req: Request,
     if (!id) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })  
     }
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id
+    
+    const userId = user.id
 
     // Get address
     const address = await prisma.address.findUnique({
@@ -124,20 +117,16 @@ export async function DELETE(req: Request,
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 })  
   }
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id
+    
+    const userId = user.id
 
     // Get address
     const address = await prisma.address.findUnique({

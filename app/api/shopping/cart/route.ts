@@ -1,24 +1,19 @@
 import { NextResponse } from "next/server"
 import { prisma as db } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 
 export async function GET(request: Request) {
   try {
-      // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded =await verifyJWT(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id as string;
+    
+    const userId = user.id as string;
     const cart = await db.cart.findFirst({
       where: { userId:userId },
       include: {
@@ -79,20 +74,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-      // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded =await verifyJWT(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id as string;
+    
+    const userId = user.id as string;
     const { shoppingId, quantity } = await request.json()
 
     // Get or create cart
@@ -156,20 +147,16 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-        // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded =await verifyJWT(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id as string;
+    
+    const userId = user.id as string;
     const { itemId, quantity } = await request.json()
 
     if (quantity === 0) {

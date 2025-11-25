@@ -1,27 +1,22 @@
 import { prisma } from "@/lib/prisma"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 
 export async function GET() {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id
+    const userId = user.id
 
     // Get user profile
-    const user = await prisma.user.findUnique({
+    const users = await prisma.user.findUnique({
       where: { id: userId as string },
       select: {
         id: true,
@@ -32,11 +27,11 @@ export async function GET() {
       },
     })
 
-    if (!user) {
+    if (!users) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    return NextResponse.json(user)
+    return NextResponse.json(users)
   } catch (error) {
     console.error("Error fetching profile:", error)
     return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 })
@@ -45,27 +40,21 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id
 
     // Get request body
     const data = await req.json()
 
     // Update user profile
-    const user = await prisma.user.update({
-      where: { id: userId as string},
+    const users = await prisma.user.update({
+      where: { id: user.id as string},
       data: {
         name: data.name,
         phone: data.phone,
@@ -79,7 +68,7 @@ export async function PUT(req: Request) {
       },
     })
 
-    return NextResponse.json(user)
+    return NextResponse.json(users)
   } catch (error) {
     console.error("Error updating profile:", error)
     return NextResponse.json({ error: "Failed to update profile" }, { status: 500 })

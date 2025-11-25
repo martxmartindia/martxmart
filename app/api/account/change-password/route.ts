@@ -1,25 +1,20 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 
 export async function POST(req: Request) {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id
+    const userId = user.id
 
     // Get request body
     const { currentPassword, newPassword } = await req.json()
@@ -30,7 +25,7 @@ export async function POST(req: Request) {
     }
 
     // Get user
-    const user = await prisma.user.findUnique({
+    const users = await prisma.user.findUnique({
       where: { id: userId as string },
       select: {
         id: true,
@@ -38,12 +33,12 @@ export async function POST(req: Request) {
       },
     })
 
-    if (!user) {
+    if (!users) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
     // Verify current password
-    const passwordMatch = await bcrypt.compare(currentPassword, user.password!)
+    const passwordMatch = await bcrypt.compare(currentPassword, users.password!)
 
     if (!passwordMatch) {
       return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 })

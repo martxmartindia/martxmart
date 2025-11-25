@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 // Get cart items
 export async function GET() {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userId = decoded.payload.id;
+    
+    const userId = user.id;
 
     const cart = await prisma.cart.findFirst({
       where: { userId },
@@ -57,16 +56,16 @@ export async function GET() {
 // Add item to cart
 export async function POST(req: Request) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userId = decoded.payload.id;
+    
+    const userId = user.id;
 
     const body = await req.json();    
     // Extract productId - handle both direct ID and nested object
@@ -152,16 +151,16 @@ export async function POST(req: Request) {
 // Clear cart
 export async function DELETE() {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userId = decoded.payload.id;
+    
+    const userId = user.id;
 
     const cart = await prisma.cart.findFirst({
       where: { userId },
