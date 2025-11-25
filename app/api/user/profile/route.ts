@@ -1,35 +1,37 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma as db } from "@/lib/prisma";
-import jwt from "jsonwebtoken";
+import { requireCustomer, getUserWithDb } from "@/lib/auth-utils";
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Require authentication for customer
+    const authResult = await requireCustomer(req);
+    
+    // If authentication failed, return the error response
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
 
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-
-    const user = await db.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        isVerified: true,
-        createdAt: true,
-      },
-    });
-
+    const user = await getUserWithDb(req);
+    
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "User not found" }, 
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      image: user.image,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
   } catch (error) {
     console.error("Error fetching user profile:", error);
     return NextResponse.json(

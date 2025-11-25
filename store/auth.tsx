@@ -1,16 +1,15 @@
 'use client'; // Mark as client component
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 
 interface User {
   id: string;
-  name: string;
-  email: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  image?: string | null;
   role: string;
-  isAdmin: boolean;
-  phone?: string;
-  bio?: string;
-  avatar?: string;
   preferences?: {
     theme?: 'light' | 'dark';
     notifications?: boolean;
@@ -20,17 +19,15 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
   error: string | null;
-  isAdmin: boolean;
+  status: 'authenticated' | 'loading' | 'unauthenticated';
 }
 
 interface AuthContextType extends AuthState {
   signOut: () => void;
   updateUser: (user: User | null) => void;
   setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
   updateUserPreferences: (preferences: Partial<User['preferences']>) => void;
   setError: (error: string | null) => void;
   setLoading: (isLoading: boolean) => void;
@@ -44,67 +41,57 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const { data: session, status } = useSession();
   const [state, setState] = useState<AuthState>({
     user: null,
-    token: null,
-    isLoading: true, // Start with loading true for SSR
+    isLoading: true,
     error: null,
-    isAdmin: false,
+    status: 'loading',
   });
 
-  // Hydrate state from localStorage on client-side mount
+  // Update state when NextAuth session changes
   useEffect(() => {
-    const hydrateState = () => {
-      try {
-        if (typeof window !== 'undefined') {
-          const authData = localStorage.getItem('auth-storage');
-          if (authData) {
-            const parsed = JSON.parse(authData);
-            setState({
-              user: parsed.state?.user || null,
-              token: parsed.state?.token || null,
-              isLoading: false,
-              error: null,
-              isAdmin: parsed.state?.user?.isAdmin || false,
-            });
-            return;
-          }
-        }
-        setState((prev) => ({ ...prev, isLoading: false }));
-      } catch {
-        setState((prev) => ({ ...prev, isLoading: false, error: 'Failed to load auth data' }));
-      }
-    };
-
-    hydrateState();
-  }, []);
-
-  // Persist state to localStorage
-  const persistState = (newState: Partial<AuthState>) => {
-    const updatedState = { ...state, ...newState };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('auth-storage', JSON.stringify({ state: updatedState }));
+    if (status === 'loading') {
+      setState(prev => ({ ...prev, isLoading: true, status: 'loading' }));
+    } else if (status === 'authenticated' && session?.user) {
+      setState({
+        user: {
+          id: session.user.id,
+          name: session.user.name,
+          email: session.user.email,
+          phone: session.user.phone,
+          image: session.user.image,
+          role: session.user.role,
+        },
+        isLoading: false,
+        error: null,
+        status: 'authenticated',
+      });
+    } else {
+      setState({
+        user: null,
+        isLoading: false,
+        error: null,
+        status: 'unauthenticated',
+      });
     }
-    setState(updatedState);
-  };
+  }, [session, status]);
 
   const signOut = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth-storage');
-    }
-    setState({ user: null, token: null, isLoading: false, error: null, isAdmin: false });
+    // This will be handled by NextAuth
+    window.location.href = '/';
   };
 
   const updateUser = (user: User | null) => {
-    persistState({ user, error: null, isAdmin: user?.isAdmin || false });
+    setState(prev => ({
+      ...prev,
+      user,
+      error: null,
+    }));
   };
 
   const setUser = (user: User | null) => {
-    persistState({ user, error: null, isAdmin: user?.isAdmin || false });
-  };
-
-  const setToken = (token: string | null) => {
-    persistState({ token, error: null });
+    updateUser(user);
   };
 
   const updateUserPreferences = (preferences: Partial<User['preferences']>) => {
@@ -116,23 +103,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           ...preferences,
         },
       };
-      persistState({ user: updatedUser });
+      updateUser(updatedUser);
     }
   };
 
   const setError = (error: string | null) => {
-    persistState({ error });
+    setState(prev => ({ ...prev, error }));
   };
 
   const setLoading = (isLoading: boolean) => {
-    persistState({ isLoading });
+    setState(prev => ({ ...prev, isLoading }));
   };
 
   const logout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth-storage');
-    }
-    setState({ user: null, token: null, error: null, isLoading: false, isAdmin: false });
+    signOut();
   };
 
   const value: AuthContextType = {
@@ -140,7 +124,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut,
     updateUser,
     setUser,
-    setToken,
     updateUserPreferences,
     setError,
     setLoading,
@@ -156,16 +139,4 @@ export const useAuth = (): AuthContextType => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
-
-export const getAuthToken = (): string | null => {
-  if (typeof window === 'undefined') return null; // Server-side
-  try {
-    const authData = localStorage.getItem('auth-storage');
-    if (!authData) return null;
-    const parsed = JSON.parse(authData);
-    return parsed.state?.token || null;
-  } catch {
-    return null;
-  }
 };

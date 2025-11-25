@@ -66,6 +66,27 @@ model User {
   @@index([role, isVerified, isDeleted])
 }
 
+/// ------------------- OTP CODES TABLE -------------------
+model OTPCode {
+  id              String   @id @default(uuid())
+  phone           String
+  email           String?
+  code            String
+  purpose         OTPVerificationPurpose
+  status          OTPVerificationStatus @default(PENDING)
+  attempts        Int      @default(0)
+  maxAttempts     Int      @default(3)
+  isUsed          Boolean  @default(false)
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([phone, purpose, status])
+  @@index([email, purpose, status])
+  @@index([expiresAt])
+}
+
 /// ------------------- ADMIN MODEL -------------------
 model Admin {
   id             String          @id @default(uuid())
@@ -1841,4 +1862,24 @@ enum ApplicationType {
   SERVICE_REQUEST
   PROJECT_REPORT
   PRODUCT_ORDER
+}
+
+/// ------------------- OTP ENUMS -------------------
+enum OTPVerificationPurpose {
+  CUSTOMER_LOGIN
+  CUSTOMER_REGISTRATION
+  ADMIN_LOGIN
+  AUTHOR_LOGIN
+  FRANCHISE_LOGIN
+  FORGOT_PASSWORD
+  PHONE_VERIFICATION
+  EMAIL_VERIFICATION
+}
+
+enum OTPVerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  EXPIRED
+  BLOCKED
 }

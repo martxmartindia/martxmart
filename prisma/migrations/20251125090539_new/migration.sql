@@ -97,6 +97,12 @@ CREATE TYPE "public"."ApplicationStatus" AS ENUM ('PENDING', 'IN_REVIEW', 'APPRO
 -- CreateEnum
 CREATE TYPE "public"."ApplicationType" AS ENUM ('FRANCHISE_REGISTRATION', 'VENDOR_REGISTRATION', 'SERVICE_REQUEST', 'PROJECT_REPORT', 'PRODUCT_ORDER');
 
+-- CreateEnum
+CREATE TYPE "public"."OTPVerificationPurpose" AS ENUM ('CUSTOMER_LOGIN', 'CUSTOMER_REGISTRATION', 'ADMIN_LOGIN', 'AUTHOR_LOGIN', 'FRANCHISE_LOGIN', 'FORGOT_PASSWORD', 'PHONE_VERIFICATION', 'EMAIL_VERIFICATION');
+
+-- CreateEnum
+CREATE TYPE "public"."OTPVerificationStatus" AS ENUM ('PENDING', 'VERIFIED', 'FAILED', 'EXPIRED', 'BLOCKED');
+
 -- CreateTable
 CREATE TABLE "public"."User" (
     "id" TEXT NOT NULL,
@@ -119,6 +125,25 @@ CREATE TABLE "public"."User" (
     "vendorProfileid" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."OTPCode" (
+    "id" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "email" TEXT,
+    "code" TEXT NOT NULL,
+    "purpose" "public"."OTPVerificationPurpose" NOT NULL,
+    "status" "public"."OTPVerificationStatus" NOT NULL DEFAULT 'PENDING',
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "maxAttempts" INTEGER NOT NULL DEFAULT 3,
+    "isUsed" BOOLEAN NOT NULL DEFAULT false,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "usedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "OTPCode_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -437,7 +462,7 @@ CREATE TABLE "public"."Slide" (
 CREATE TABLE "public"."Advertisement" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "image" TEXT NOT NULL,
+    "image" TEXT,
     "offer" TEXT NOT NULL,
     "offerExpiry" TEXT NOT NULL,
     "benefits" TEXT[],
@@ -1575,6 +1600,15 @@ CREATE INDEX "User_name_email_phone_idx" ON "public"."User"("name", "email", "ph
 
 -- CreateIndex
 CREATE INDEX "User_role_isVerified_isDeleted_idx" ON "public"."User"("role", "isVerified", "isDeleted");
+
+-- CreateIndex
+CREATE INDEX "OTPCode_phone_purpose_status_idx" ON "public"."OTPCode"("phone", "purpose", "status");
+
+-- CreateIndex
+CREATE INDEX "OTPCode_email_purpose_status_idx" ON "public"."OTPCode"("email", "purpose", "status");
+
+-- CreateIndex
+CREATE INDEX "OTPCode_expiresAt_idx" ON "public"."OTPCode"("expiresAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Admin_email_key" ON "public"."Admin"("email");

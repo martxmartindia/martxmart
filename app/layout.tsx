@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner";
+import { Providers } from "./providers";
 import Script from "next/script";
-import { AuthProvider } from "@/store/auth";
-import { ChatProvider } from "@/components/chat/ChatProvider";
-import { AdminProvider } from "@/store/admin";
-import { CartProvider } from "@/store/cart";
-import { AuthorProvider } from "@/store/author";
-import { WishlistProvider } from "@/store/wishlist";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -37,24 +31,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <AdminProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <AuthorProvider>
-                  <ChatProvider>
-                    <main>{children}</main>
-                    <Toaster position="top-right" richColors />
-                    <Script
-                      src="https://checkout.razorpay.com/v1/checkout.js"
-                      strategy="lazyOnload"
-                    />
-                  </ChatProvider>
-                </AuthorProvider>
-              </WishlistProvider>
-            </CartProvider>
-          </AdminProvider>
-        </AuthProvider>
+        <Providers>
+          <main>{children}</main>
+          <Script
+            src="https://checkout.razorpay.com/v1/checkout.js"
+            strategy="lazyOnload"
+          />
+        </Providers>
       </body>
     </html>
   );
