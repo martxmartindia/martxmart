@@ -81,11 +81,15 @@ export default withAuth(
           "/api/auth",
           "/api/public",
         ];
-
+        
+        
         // Check if route is public
         const isPublicRoute = publicRoutes.some(route => 
           pathname.startsWith(route)
         );
+        
+        // Debug logging for protected route checks
+        console.log("🔍 [Middleware] Checking route:", pathname, "Public:", isPublicRoute);
 
         if (isPublicRoute) {
           return true;

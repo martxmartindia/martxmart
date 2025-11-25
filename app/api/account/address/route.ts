@@ -1,20 +1,28 @@
-import { verifyJWT } from "@/utils/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-  const user = await verifyJWT(token);
-  if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  // Use NextAuth authentication instead of custom JWT
+  const authError = await requireAuth();
+  if (authError) return authError;
+  
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const addresses = await prisma.address.findMany({
-      where: { userId: user.payload.id as string },
+      where: { userId: user.id },
     });
+    
+    console.log("✅ [Address API] Successfully authenticated via NextAuth:", { 
+      userId: user.id, 
+      role: user.role,
+      addressCount: addresses.length
+    });
+    
     return NextResponse.json({ addresses }, { status: 200 });
   } catch (error) {
     console.error("Error fetching addresses:", error);
@@ -26,13 +34,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  if (!token) {
-    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-  }
-
-  const user = await verifyJWT(token);
+  // Use NextAuth authentication instead of custom JWT
+  const authError = await requireAuth();
+  if (authError) return authError;
+  
+  const user = await getAuthenticatedUser();
   if (!user) {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
@@ -58,9 +64,16 @@ export async function POST(req: Request) {
         city,
         state,
         zip,
-        userId: user.payload.id as string,
+        userId: user.id,
       },
     });
+    
+    console.log("✅ [Address API] Address created via NextAuth:", { 
+      userId: user.id, 
+      role: user.role,
+      addressId: address.id
+    });
+    
     return NextResponse.json(
       { success: true, message: "Address added successfully", address },
       { status: 201 }

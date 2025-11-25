@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 import Razorpay from "razorpay";
+
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
@@ -10,17 +10,16 @@ const razorpay = new Razorpay({
 
 export async function POST(request: Request) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    
+    const userId = user.id;
     const { items, address, paymentMethod, totalAmount, appliedCoupon } = await request.json();
 
     // Generate order number
@@ -95,17 +94,21 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    
+    const userId = user.id;
+    
+    console.log("✅ [Orders API] Successfully authenticated via NextAuth:", { 
+      userId, 
+      role: user.role 
+    });
     
     const orders = await prisma.order.findMany({
       where: { userId },

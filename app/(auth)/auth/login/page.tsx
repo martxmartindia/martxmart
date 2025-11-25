@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/store/auth";
@@ -47,6 +47,7 @@ export default function CustomerLoginPage() {
   const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
   const router = useRouter();
   const { user, setUser } = useAuth();
+  const { data: session } = useSession();
 
   const {
     register,
@@ -73,31 +74,59 @@ export default function CustomerLoginPage() {
       // Determine if identifier is email or phone
       const method = isEmail(data.identifier) ? "email" : "phone";
       
+      // Map method to correct provider ID
+      const providerId = method === "email" ? "customer-secure-email" : "customer-secure-phone";
+      
+      console.log("🔍 [Login Debug] Form submission:", {
+        identifier: data.identifier,
+        method,
+        providerId,
+        passwordLength: data.password?.length || 0
+      });
+      
       // Use NextAuth credentials provider for login
-      const result = await signIn("credentials", {
-        redirect: false,
-        [method]: data.identifier,
+      const authCredentials: Record<string, string> = {
         password: data.password,
+        [method]: data.identifier,
+      };
+      
+      console.log("🔍 [Login Debug] Calling signIn with:", {
+        provider: providerId,
+        credentials: { ...authCredentials, password: "[HIDDEN]" }
+      });
+      
+      const result = await signIn(providerId, {
+        redirect: false,
+        ...authCredentials,
+      });
+
+      console.log("🔍 [Login Debug] SignIn result:", {
+        ok: result?.ok,
+        error: result?.error,
+        status: result?.status,
+        url: result?.url
       });
 
       if (result?.error) {
+        console.error("❌ [Login Debug] Authentication error:", result.error);
         toast.error(result.error || "Invalid credentials");
       } else if (result?.ok) {
+        console.log("✅ [Login Debug] Authentication successful!");
         toast.success("Login successful!");
         
-        // Update auth store
-        try {
-          const session = await fetch("/api/auth/session").then(r => r.json());
-          if (session?.user) {
-            setUser(session.user);
-          }
-        } catch (error) {
-          console.error("Failed to get session:", error);
+        // Update auth store with the session data from useSession
+        if (session?.user) {
+          console.log("🔍 [Login Debug] Updating auth store with session user:", session.user);
+          setUser(session.user);
         }
         
         router.push("/");
+      } else {
+        console.error("❌ [Login Debug] Unexpected signIn result:", result);
+        toast.error("Unexpected authentication result");
       }
     } catch (error: any) {
+      console.error("❌ [Login Debug] Exception during login:", error);
       toast.error("Failed to login. Please try again.");
     } finally {
       setLoading(false);

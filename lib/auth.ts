@@ -1,4 +1,4 @@
-import { NextAuthOptions } from "next-auth";
+import { NextAuthOptions, Session, User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
@@ -103,12 +103,21 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
+        console.log("🔍 [Provider Debug] customer-secure-phone called:", {
+          hasPhone: !!credentials?.phone,
+          hasPassword: !!credentials?.password,
+          phone: credentials?.phone
+        });
+        
         if (!credentials?.phone || !credentials?.password) {
+          console.error("❌ [Provider Debug] Missing phone or password");
           return null;
         }
 
         try {
           const cleanPhone = credentials.phone.replace(/^\+?91/, "").trim();
+          
+          console.log("🔍 [Provider Debug] Looking for user with phone:", cleanPhone);
           
           // Find verified customer user by phone
           const user = await prisma.user.findUnique({
@@ -120,9 +129,22 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          if (!user || !user.password) {
+          if (!user) {
+            console.error("❌ [Provider Debug] No user found with phone:", cleanPhone);
             return null;
           }
+          
+          if (!user.password) {
+            console.error("❌ [Provider Debug] User found but no password set:", cleanPhone);
+            return null;
+          }
+          
+          console.log("🔍 [Provider Debug] User found:", {
+            id: user.id,
+            name: user.name,
+            role: user.role,
+            hasPassword: !!user.password
+          });
 
           // Verify password
           const isValidPassword = await verifyPassword(
@@ -130,11 +152,14 @@ export const authOptions: NextAuthOptions = {
             user.password
           );
 
+          console.log("🔍 [Provider Debug] Password verification:", { isValidPassword });
+
           if (!isValidPassword) {
+            console.error("❌ [Provider Debug] Invalid password for user:", cleanPhone);
             return null;
           }
 
-          return {
+          const result = {
             id: user.id,
             name: user.name,
             email: user.email,
@@ -142,8 +167,16 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             image: user.image,
           };
+          
+          console.log("✅ [Provider Debug] Authentication successful:", {
+            id: result.id,
+            role: result.role,
+            phone: result.phone
+          });
+
+          return result;
         } catch (error) {
-          console.error("Secure customer phone credentials authorization error:", error);
+          console.error("❌ [Provider Debug] Exception in customer-secure-phone:", error);
           return null;
         }
       },
@@ -158,11 +191,20 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
+        console.log("🔍 [Provider Debug] customer-secure-email called:", {
+          hasEmail: !!credentials?.email,
+          hasPassword: !!credentials?.password,
+          email: credentials?.email
+        });
+        
         if (!credentials?.email || !credentials?.password) {
+          console.error("❌ [Provider Debug] Missing email or password");
           return null;
         }
 
         try {
+          console.log("🔍 [Provider Debug] Looking for user with email:", credentials.email.toLowerCase());
+          
           // Find verified customer user by email
           const user = await prisma.user.findUnique({
             where: { 
@@ -173,9 +215,22 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          if (!user || !user.password) {
+          if (!user) {
+            console.error("❌ [Provider Debug] No user found with email:", credentials.email.toLowerCase());
             return null;
           }
+          
+          if (!user.password) {
+            console.error("❌ [Provider Debug] User found but no password set:", credentials.email.toLowerCase());
+            return null;
+          }
+          
+          console.log("🔍 [Provider Debug] User found:", {
+            id: user.id,
+            name: user.name,
+            role: user.role,
+            hasPassword: !!user.password
+          });
 
           // Verify password
           const isValidPassword = await verifyPassword(
@@ -183,11 +238,14 @@ export const authOptions: NextAuthOptions = {
             user.password
           );
 
+          console.log("🔍 [Provider Debug] Password verification:", { isValidPassword });
+
           if (!isValidPassword) {
+            console.error("❌ [Provider Debug] Invalid password for user:", credentials.email.toLowerCase());
             return null;
           }
 
-          return {
+          const result = {
             id: user.id,
             name: user.name,
             email: user.email,
@@ -195,8 +253,16 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             image: user.image,
           };
+          
+          console.log("✅ [Provider Debug] Authentication successful:", {
+            id: result.id,
+            role: result.role,
+            email: result.email
+          });
+
+          return result;
         } catch (error) {
-          console.error("Secure customer email credentials authorization error:", error);
+          console.error("❌ [Provider Debug] Exception in customer-secure-email:", error);
           return null;
         }
       },
@@ -446,24 +512,120 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      console.log("🔍 [JWT Callback] Called with:", { 
+        hasToken: !!token, 
+        hasUser: !!user, 
+        trigger, 
+        tokenSub: token?.sub,
+        userRole: user?.role 
+      });
+      
+      // Initialize token if it doesn't exist
+      if (!token) {
+        console.log("🔧 [JWT Callback] Initializing empty token object");
+        token = {};
+      }
+      
       if (user) {
-        token.role = user.role;
-        token.phone = user.phone ?? undefined;
+        const extendedUser = user as any; // Cast to access custom properties
+        console.log("✅ [JWT Callback] User found, setting token data:", { 
+          role: extendedUser.role, 
+          phone: extendedUser.phone,
+          id: extendedUser.id,
+          email: extendedUser.email
+        });
+        // Set the user ID in the token
+        token.sub = extendedUser.id;
+        token.role = extendedUser.role;
+        token.phone = extendedUser.phone ?? undefined;
+        token.name = extendedUser.name ?? undefined;
+        token.email = extendedUser.email ?? undefined;
+        token.image = extendedUser.image ?? undefined;
       }
 
       // Handle session updates
       if (trigger === "update" && session) {
+        console.log("🔄 [JWT Callback] Session update, merging data");
         return { ...token, ...session };
       }
 
+      console.log("📤 [JWT Callback] Returning token:", { 
+        sub: token?.sub, 
+        role: token?.role,
+        phone: token?.phone 
+      });
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.sub!;
-        session.user.role = token.role as string;
-        session.user.phone = token.phone as string;
+      console.log("🔍 [Session Callback] Called with:", { 
+        hasSession: !!session, 
+        hasToken: !!token,
+        tokenSub: token?.sub,
+        tokenRole: token?.role 
+      });
+      
+      // Handle the case when session is null/undefined
+      if (!session) {
+        console.log("⚠️ [Session Callback] No session object provided, creating minimal session for unauthenticated state");
+        // Return a minimal session object for unauthenticated users
+        // This prevents the session callback from returning null which causes issues
+        const minimalSession = {
+          expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+          user: {
+            id: '',
+            role: 'CUSTOMER' as const,
+            phone: null,
+            name: null,
+            email: null,
+            image: null,
+          }
+        };
+        console.log("📤 [Session Callback] Returning minimal session for unauthenticated user");
+        return minimalSession;
       }
+      
+      // Ensure session.user exists
+      if (!session.user) {
+        console.log("🔧 [Session Callback] No user object in session, creating minimal user");
+        session.user = {
+          id: '',
+          role: 'CUSTOMER' as const,
+          phone: null,
+          name: null,
+          email: null,
+          image: null,
+        };
+      }
+      
+      if (token) {
+        console.log("✅ [Session Callback] Token found, setting session data from token");
+        
+        // Safely set session data with fallbacks
+        const user = session.user as any; // Cast to access custom properties
+        user.id = token.sub || '';
+        user.role = (token.role as string) || 'CUSTOMER';
+        user.phone = token.phone as string || null;
+        user.name = token.name as string || null;
+        user.email = token.email as string || null;
+        user.image = token.image as string || null;
+        
+        console.log("✅ [Session Callback] Session data populated:", { 
+          userId: session.user.id, 
+          userRole: session.user.role,
+          userPhone: session.user.phone 
+        });
+      } else {
+        console.log("ℹ️ [Session Callback] No token found, keeping minimal session for unauthenticated state");
+        // Keep the minimal session object for unauthenticated users
+      }
+      
+      console.log("📤 [Session Callback] Final session object:", {
+        hasUser: !!session.user,
+        userId: session.user?.id,
+        userRole: session.user?.role,
+        expires: session.expires
+      });
+      
       return session;
     },
     async redirect({ url, baseUrl }) {
@@ -478,14 +640,53 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
-    async signIn({ user, account, profile }) {
-      console.log(`User ${user.email} signed in via ${account?.provider}`);
+    async signIn({ user, account, profile, isNewUser }) {
+      const extendedUser = user as any; // Cast to access custom properties
+      console.log(`✅ [SignIn Event] User ${extendedUser.email || extendedUser.phone} signed in via ${account?.provider}`, {
+        isNewUser,
+        userId: extendedUser.id,
+        userRole: extendedUser.role
+      });
     },
     async signOut({ token, session }) {
-      console.log(`User ${session?.user?.email} signed out`);
+      const sessionUser = session?.user as any; // Cast to access custom properties
+      console.log(`🚪 [SignOut Event] User ${sessionUser?.email || sessionUser?.phone} signed out`);
+    },
+    async createUser({ user }) {
+      const extendedUser = user as any; // Cast to access custom properties
+      console.log(`👤 [CreateUser Event] New user created:`, {
+        id: extendedUser.id,
+        email: extendedUser.email,
+        phone: extendedUser.phone,
+        role: extendedUser.role
+      });
+    },
+    async updateUser({ user }) {
+      const extendedUser = user as any; // Cast to access custom properties
+      console.log(`🔄 [UpdateUser Event] User updated:`, {
+        id: extendedUser.id,
+        email: extendedUser.email,
+        phone: extendedUser.phone,
+        role: extendedUser.role
+      });
     },
   },
   debug: process.env.NODE_ENV === "development",
+  
+  // Add warning logger for auth issues
+  logger: {
+    error(code, ...message) {
+      console.error("❌ [NextAuth Error]", code, ...message);
+    },
+    warn(code, ...message) {
+      console.warn("⚠️ [NextAuth Warning]", code, ...message);
+    },
+    debug(code, ...message) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔍 [NextAuth Debug]", code, ...message);
+      }
+    },
+  },
 };
 
 // Helper functions for OTP management
@@ -512,15 +713,15 @@ export async function generateAndSendOTP(phone: string, email: string | null | u
       return { success: false, message: "Phone or email is required" };
     }
 
-    const updateData: any = {
+    const updateData = {
       where: {
         OR: orConditions,
-        purpose: purpose as any,
-        status: "PENDING",
+        purpose: purpose as any, // Cast to enum type
+        status: "PENDING" as any, // Cast to enum type
         isUsed: false,
       },
       data: {
-        status: "EXPIRED",
+        status: "EXPIRED" as any, // Cast to enum type
       },
     };
 
@@ -529,12 +730,11 @@ export async function generateAndSendOTP(phone: string, email: string | null | u
     // Create new OTP record
     const otpData: any = {
       code: otp,
-      purpose: purpose as any,
+      purpose: purpose as any, // Cast to enum type
       expiresAt,
+      phone: cleanPhone,
+      email: cleanEmail,
     };
-
-    if (cleanPhone) otpData.phone = cleanPhone;
-    if (cleanEmail) otpData.email = cleanEmail;
 
     await prisma.oTPCode.create({
       data: otpData,
@@ -570,7 +770,7 @@ export async function verifyOTP(phone: string, otp: string, purpose: string) {
       where: {
         phone: cleanPhone,
         code: otp,
-        purpose: purpose as any,
+        purpose: purpose as any, // Cast to enum type
         status: "PENDING",
         expiresAt: {
           gt: new Date(),

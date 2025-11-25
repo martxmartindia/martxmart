@@ -144,11 +144,21 @@ export default function EnhancedNavbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    router.push("/");
-    toast.success("Logged out successfully");
+  const handleLogout = async () => {
+    try {
+      console.log("🔍 [Navbar Logout] Starting logout process...");
+      
+      // Call the auth store logout function (which properly calls NextAuth signOut)
+      await logout();
+      
+      console.log("✅ [Navbar Logout] Logout completed successfully");
+      
+      // The auth store logout function already handles navigation and cleanup
+      // No need to manually clear cookies or navigate
+    } catch (error) {
+      console.error("❌ [Navbar Logout] Error during logout:", error);
+      toast.error("Failed to logout. Please try again.");
+    }
   };
 
   return (

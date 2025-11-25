@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Script from "next/script";
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,13 +32,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>
-          <main>{children}</main>
-          <Script
-            src="https://checkout.razorpay.com/v1/checkout.js"
-            strategy="lazyOnload"
-          />
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            <main>{children}</main>
+            <Script
+              src="https://checkout.razorpay.com/v1/checkout.js"
+              strategy="lazyOnload"
+            />
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -115,8 +115,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setState(prev => ({ ...prev, isLoading }));
   };
 
-  const logout = () => {
-    signOut();
+  const logout = async () => {
+    console.log("🔍 [Auth Store Logout] Starting logout process...");
+    await signOut();
+    console.log("✅ [Auth Store Logout] SignOut completed, NextAuth will handle cleanup");
   };
 
   const value: AuthContextType = {
