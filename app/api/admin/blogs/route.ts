@@ -84,25 +84,16 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     // Check authentication
-    const token = (await cookies()).get('token')?.value
-    
-    if (!token) {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'AUTHOR')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
-    
-    const decoded = await verifyJwtToken(token)
-    
-    if (!decoded || !decoded.payload || (decoded.payload.role !== 'ADMIN' && decoded.payload.role !== 'AUTHOR')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      ) 
-    }
-    
-    const userId = decoded.payload.id
+
+    const userId = session.user.id
     if (!userId) {
       return NextResponse.json(
         { error: 'Invalid user ID' },
@@ -134,18 +125,7 @@ export async function POST(req: Request) {
     }
    
     
-    // Check if admin exists
-    const existingAdmin = await prisma.admin.findUnique({
-      where: { id: userId as string }
-    });
-
-    if (!existingAdmin) {
-      return NextResponse.json(
-        { error: 'Admin not found' },
-        { status: 404 }
-      );
-    }
-
+    // For next-auth, the user ID should be valid
     // Create blog
     try {
       const blog = await prisma.blog.create({
@@ -160,7 +140,7 @@ export async function POST(req: Request) {
           tags: Array.isArray(data.tags) ? data.tags : [],
           metaTitle: data.metaTitle,
           metaDescription: data.metaDescription,
-          authorId: existingAdmin.id,
+          authorId: userId as string,
           isDeleted: false,
           createdAt: new Date(),
           updatedAt: new Date(),

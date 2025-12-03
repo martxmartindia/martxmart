@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/utils/auth';
-import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
   try {
     // Check if user is admin
-    const token = (await cookies()).get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== 'object' || decoded.payload.role !== 'ADMIN') {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

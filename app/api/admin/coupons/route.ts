@@ -1,9 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
     const searchParams = new URL(req.url).searchParams;
     const page = parseInt(searchParams.get("page") || "1");
@@ -47,6 +52,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
     const { code, discount, expiresAt } = await req.json();
 

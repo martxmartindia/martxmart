@@ -63,12 +63,12 @@ export default function UserDetailPage() {
         setUserData(data.user)
       } else {
         toast.error(data.error || "Failed to fetch user details")
-        router.push("/admin/users")
+        router.push("/admin/customers")
       }
     } catch (error) {
       console.error("Error fetching user details:", error)
       toast.error("Failed to fetch user details")
-      router.push("/admin/users")
+      router.push("/admin/customers")
     } finally {
       setIsLoading(false)
     }
@@ -88,7 +88,7 @@ export default function UserDetailPage() {
 
       if (response.ok) {
         toast.success("User deleted successfully")
-        router.push("/admin/users")
+        router.push("/admin/customers")
       } else {
         toast.error(data.error || "Failed to delete user")
       }
@@ -211,7 +211,7 @@ export default function UserDetailPage() {
               </>
             )}
           </Button>
-          <Button onClick={() => router.push(`/admin/users/${userData.id}/edit`)}>
+          <Button onClick={() => router.push(`/admin/customers/${userData.id}/edit`)}>
             <Edit className="h-4 w-4 mr-2" />
             Edit User
           </Button>

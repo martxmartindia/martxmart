@@ -1,24 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from "@/lib/prisma"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 
 export async function GET(request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = await params 
+  const { slug } = await params
   try {
     // Check authentication
-    const token = request.cookies.get('token')?.value    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-    
-    const decoded = verifyJwtToken(token)
-    
-    if (!decoded || typeof decoded !== 'object') {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'AUTHOR')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -69,45 +62,36 @@ export async function GET(request: NextRequest,
 export async function PUT(request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = await params 
+  const { slug } = await params
   try {
     // Check authentication
-    const token = request.cookies.get('token')?.value    
-    
-    if (!token) {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'AUTHOR')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
-    
-    const decoded = verifyJwtToken(token)
-    
-    if (!decoded || typeof decoded !== 'object') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-    
-    const userId = (await decoded).payload.id
+
+    const userId = session.user.id
     const id = slug
-    
+
     // Get blog to check ownership or admin status
     const existingBlog = await prisma.blog.findUnique({
       where: { id },
       select: { authorId: true },
     })
-    
+
     if (!existingBlog) {
       return NextResponse.json(
         { error: 'Blog not found' },
         { status: 404 }
       )
     }
-    
+
     // Only allow the author or admin to update
-    if (existingBlog.authorId !== userId && (await decoded).payload.role !== 'ADMIN') {
+    if (existingBlog.authorId !== userId && session.user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
@@ -170,45 +154,36 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = await params 
+  const { slug } = await params
   try {
     // Check authentication
-    const token = request.cookies.get('token')?.value    
-    
-    if (!token) {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'AUTHOR')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
-    
-    const decoded = verifyJwtToken(token)
-    
-    if (!decoded || typeof decoded !== 'object') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-    
-    const userId = (await decoded).payload.id
+
+    const userId = session.user.id
     const id = slug
-    
+
     // Get blog to check ownership or admin status
     const existingBlog = await prisma.blog.findUnique({
       where: { id },
       select: { authorId: true },
     })
-    
+
     if (!existingBlog) {
       return NextResponse.json(
         { error: 'Blog not found' },
         { status: 404 }
       )
     }
-    
+
     // Only allow the author or admin to delete
-    if (existingBlog.authorId !== userId && (await decoded).payload.role !== 'ADMIN') {
+    if (existingBlog.authorId !== userId && session.user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }

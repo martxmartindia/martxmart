@@ -1,17 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
 export async function GET(req: Request) {
 try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized User" }, { status: 401 });
-    }
-    const user = await verifyJWT(token);
-    if (!user || user.payload.role !== "ADMIN") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
   
     const coupons = await prisma.coupon.findMany();
@@ -24,13 +20,9 @@ try {
 
 export async function POST(req: NextRequest) {
 try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized User" }, { status: 401 });
-    }
-    const user = await verifyJWT(token);
-    if (!user || user.payload.role !== "ADMIN") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
   
     const { code, discount } = await req.json();
@@ -53,7 +45,7 @@ try {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         admin:{
           connect:{
-            id:user.payload.sub
+            id:session.user.id
           }
         }
       },
@@ -68,13 +60,9 @@ try {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized User" }, { status: 401 });
-    }
-    const user = await verifyJWT(token);
-    if (!user || user.payload.role!== "ADMIN") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
     const { code } = await req.json();
     if (!code) {
@@ -98,13 +86,9 @@ export async function DELETE(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ message: "Unauthorized User" }, { status: 401 });
-    }
-    const user = await verifyJWT(token);
-    if (!user || user.payload.role!== "ADMIN") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
     const { code, isActive } = await req.json();
     if (!code || isActive === undefined) {

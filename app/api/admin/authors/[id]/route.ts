@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 import bcrypt from "bcryptjs"
 
 export async function GET(req: NextRequest,
@@ -10,15 +10,8 @@ export async function GET(req: NextRequest,
   const userId = (await params).id
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
+    const session = await getServerSession(authOptions)
+    if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -66,15 +59,9 @@ export async function PATCH(req: NextRequest,
   const id = (await params).id;
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

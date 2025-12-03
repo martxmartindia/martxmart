@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
 
 export async function GET(req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -9,15 +9,9 @@ export async function GET(req: NextRequest,
   const id = (await params).id;
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -54,15 +48,9 @@ export async function PATCH(req: NextRequest,
   const id = (await params).id;
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -87,15 +75,9 @@ export async function DELETE(request: NextRequest,
   const id = (await params).id;
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     // Delete franchise

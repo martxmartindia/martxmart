@@ -1,30 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 
 export async function GET(req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params 
+  const { id } = await params
   try {
     // Check if user is authenticated
-    const token = (await cookies()).get("token")?.value
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // @ts-expect-error - JWT payload type is dynamic
-    const userId = decoded.id
-    // @ts-expect-error - JWT payload type is dynamic
-    const userRole = decoded.role
+    const userId = session.user.id
+    const userRole = session.user.role
 
     const quotationId = id
 
@@ -67,18 +59,12 @@ export async function GET(req: NextRequest,
 export async function PUT(req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params 
+  const { id } = await params
   try {
     // Check if user is admin
-    const token = (await cookies()).get("token")?.value
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || (await decoded).payload.id !== "ADMIN") {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

@@ -1,28 +1,20 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
 
-export async function POST(req: Request,  { params }: { params: Promise<{ id: string }> }) 
-{  const { id} = await params 
+export async function POST(req: Request,  { params }: { params: Promise<{ id: string }> })
+{  const { id} = await params
   try {
     // Check if user is admin or the vendor
-    const token = (await cookies()).get("token")?.value
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // @ts-expect-error - JWT payload type is dynamic
-    const userId = decoded.id
-    // @ts-expect-error - JWT payload type is dynamic
-    const userRole = decoded.role
+    const userId = session.user.id
+    const userRole = session.user.role
 
     const vendorId =id
 
