@@ -17,11 +17,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <AuthorProvider>
               <ChatProvider>
                 {children}
-                <Toaster position="top-right" richColors />
+                <Toaster position="bottom-right" richColors />
               </ChatProvider>
             </AuthorProvider>
           </WishlistProvider>
-        </CartProvider>
+        </CartProvider> 
       </AuthProvider>
     </SessionProvider>
   );

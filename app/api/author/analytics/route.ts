@@ -64,7 +64,25 @@ export async function GET() {
       }
     })
 
-    // Get recent blog performance
+    // Get top performing blogs
+    const topBlogs = await prisma.blog.findMany({
+      where: {
+        authorId: session.user.id,
+        isDeleted: false,
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        viewCount: true,
+      },
+      orderBy: {
+        viewCount: 'desc',
+      },
+      take: 5,
+    });
+
+    // Get recent blogs
     const recentBlogs = await prisma.blog.findMany({
       where: {
         authorId: session.user.id,
@@ -73,12 +91,8 @@ export async function GET() {
       select: {
         id: true,
         title: true,
-        status: true,
+        slug: true,
         viewCount: true,
-        likeCount: true,
-        commentCount: true,
-        publishedAt: true,
-        createdAt: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -92,15 +106,21 @@ export async function GET() {
       : 0;
 
     return NextResponse.json({
-      overview: {
-        totalBlogs,
-        publishedBlogs,
-        totalViews,
-        totalLikes,
-        totalComments,
-        engagementRate: Math.round(engagementRate * 100) / 100,
-      },
-      recentBlogs,
+      totalBlogs,
+      publishedBlogs,
+      totalViews,
+      topBlogs: topBlogs.map(blog => ({
+        id: blog.id,
+        title: blog.title,
+        slug: blog.slug,
+        views: blog.viewCount,
+      })),
+      recentBlogs: recentBlogs.map(blog => ({
+        id: blog.id,
+        title: blog.title,
+        slug: blog.slug,
+        views: blog.viewCount,
+      })),
     });
   } catch (error) {
     console.error('[AUTHOR_ANALYTICS]', error);

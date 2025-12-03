@@ -12,6 +12,7 @@ import { Clock, Edit2, Eye, Search, Tag, Trash2, Loader2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { toast } from "sonner"
+import { BlogPagination } from "@/components/blog-pagination"
 
 type BlogWithAuthor = Blog & {
   author: {
@@ -34,8 +35,11 @@ export default function AuthorBlogsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
-  const [filteredBlogs, setFilteredBlogs] = useState<BlogWithAuthor[]>([])
-  const [pagination, setPagination] = useState<PaginationData | null>(null)
+  const [totalPages, setTotalPages] = useState(1)
+
+    useEffect(() => {
+    fetchBlogs()
+  }, [currentPage, statusFilter, searchQuery])
 
   const fetchBlogs = async () => {
     setIsLoading(true)
@@ -55,7 +59,7 @@ export default function AuthorBlogsPage() {
       }
 
       setBlogs(data.blogs)
-      setPagination(data.pagination)
+      setTotalPages(data.pagination.totalPages)
     } catch (error) {
       console.error("Error fetching blogs:", error)
       toast.error("Failed to load blogs")
@@ -63,10 +67,6 @@ export default function AuthorBlogsPage() {
       setIsLoading(false)
     }
   }
-
-  useEffect(() => {
-    fetchBlogs()
-  }, [currentPage, statusFilter, searchQuery])
 
   const handleDelete = async (blogId: string) => {
     if (!confirm("Are you sure you want to delete this blog?")) return
@@ -125,13 +125,18 @@ export default function AuthorBlogsPage() {
         </Select>
       </div>
 
-      {isLoading || filteredBlogs && filteredBlogs.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary mx-auto"></div>
+          <p className="text-gray-500 mt-4">Loading blogs...</p>
+        </div>
+      ) : blogs.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500">No blogs found</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredBlogs && filteredBlogs.map((blog) => (
+          {blogs.map((blog) => (
             <Card key={blog.id} className="overflow-hidden">
               {blog.featuredImage && (
                 <div className="aspect-video overflow-hidden">
@@ -191,6 +196,14 @@ export default function AuthorBlogsPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <BlogPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       )}
     </div>
   )

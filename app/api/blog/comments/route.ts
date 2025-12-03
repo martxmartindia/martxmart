@@ -8,7 +8,17 @@ export async function POST(request: NextRequest) {
     if (result instanceof NextResponse) return result;
 
     const decoded = await getAuthenticatedUser();
-    if (!decoded || decoded.role !== "AUTHOR") {
+    if (!decoded) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify user exists in database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true },
+    });
+
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

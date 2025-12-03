@@ -63,7 +63,7 @@ export default function EditBlogPage() {
     const fetchBlog = async () => {
       setIsLoading(true)
       try {
-        const response = await fetch(`/api/author/blogs/${params.id}`)
+        const response = await fetch(`/api/author/blogs/${params.blogId}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -91,7 +91,7 @@ export default function EditBlogPage() {
     }
 
     fetchBlog()
-  }, [params.id, router, form])
+  }, [params.blogId, router, form])
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const title = e.target.value
@@ -131,7 +131,7 @@ export default function EditBlogPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch(`/api/author/blogs/${params.id}`, {
+      const response = await fetch(`/api/author/blogs/${params.blogId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

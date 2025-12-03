@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, FileText, PlusCircle, BarChart2, User, Settings } from "lucide-react"
+import { LayoutDashboard, FileText, PlusCircle, BarChart2, User, Settings, LogOut } from "lucide-react"
 
 const AuthorSidebar = () => {
   const pathname = usePathname()
@@ -50,7 +51,7 @@ const AuthorSidebar = () => {
   return (
     <div className="h-full border-r bg-gray-100/40 w-64">
       <div className="p-6">
-        <Link href="/author/dashboard">
+        <Link href="/author">
           <h1 className="text-2xl font-bold">Author Panel</h1>
         </Link>
       </div>
@@ -68,6 +69,15 @@ const AuthorSidebar = () => {
             {route.label}
           </Link>
         ))}
+      </div>
+      <div className="mt-auto p-6">
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="flex items-center gap-x-2 text-sm font-medium text-muted-foreground hover:text-red-600 hover:bg-red-50 py-4 px-6 w-full rounded-md transition-all"
+        >
+          <LogOut className="h-5 w-5" />
+          Logout
+        </button>
       </div>
     </div>
   )
