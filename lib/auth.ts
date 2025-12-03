@@ -512,28 +512,8 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      console.log("🔍 [JWT Callback] Called with:", { 
-        hasToken: !!token, 
-        hasUser: !!user, 
-        trigger, 
-        tokenSub: token?.sub,
-        userRole: user?.role 
-      });
-      
-      // Initialize token if it doesn't exist
-      if (!token) {
-        console.log("🔧 [JWT Callback] Initializing empty token object");
-        token = {};
-      }
-      
       if (user) {
         const extendedUser = user as any; // Cast to access custom properties
-        console.log("✅ [JWT Callback] User found, setting token data:", { 
-          role: extendedUser.role, 
-          phone: extendedUser.phone,
-          id: extendedUser.id,
-          email: extendedUser.email
-        });
         // Set the user ID in the token
         token.sub = extendedUser.id;
         token.role = extendedUser.role;
@@ -545,30 +525,14 @@ export const authOptions: NextAuthOptions = {
 
       // Handle session updates
       if (trigger === "update" && session) {
-        console.log("🔄 [JWT Callback] Session update, merging data");
         return { ...token, ...session };
       }
-
-      console.log("📤 [JWT Callback] Returning token:", { 
-        sub: token?.sub, 
-        role: token?.role,
-        phone: token?.phone 
-      });
       return token;
     },
     async session({ session, token }) {
-      console.log("🔍 [Session Callback] Called with:", { 
-        hasSession: !!session, 
-        hasToken: !!token,
-        tokenSub: token?.sub,
-        tokenRole: token?.role 
-      });
       
       // Handle the case when session is null/undefined
       if (!session) {
-        console.log("⚠️ [Session Callback] No session object provided, creating minimal session for unauthenticated state");
-        // Return a minimal session object for unauthenticated users
-        // This prevents the session callback from returning null which causes issues
         const minimalSession = {
           expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
           user: {
@@ -580,13 +544,11 @@ export const authOptions: NextAuthOptions = {
             image: null,
           }
         };
-        console.log("📤 [Session Callback] Returning minimal session for unauthenticated user");
         return minimalSession;
       }
       
       // Ensure session.user exists
       if (!session.user) {
-        console.log("🔧 [Session Callback] No user object in session, creating minimal user");
         session.user = {
           id: '',
           role: 'CUSTOMER' as const,
@@ -597,9 +559,7 @@ export const authOptions: NextAuthOptions = {
         };
       }
       
-      if (token) {
-        console.log("✅ [Session Callback] Token found, setting session data from token");
-        
+      if (token) {        
         // Safely set session data with fallbacks
         const user = session.user as any; // Cast to access custom properties
         user.id = token.sub || '';
@@ -608,24 +568,10 @@ export const authOptions: NextAuthOptions = {
         user.name = token.name as string || null;
         user.email = token.email as string || null;
         user.image = token.image as string || null;
-        
-        console.log("✅ [Session Callback] Session data populated:", { 
-          userId: session.user.id, 
-          userRole: session.user.role,
-          userPhone: session.user.phone 
-        });
-      } else {
-        console.log("ℹ️ [Session Callback] No token found, keeping minimal session for unauthenticated state");
-        // Keep the minimal session object for unauthenticated users
+    
+      } else{
+        console.warn("⚠️ [Session Callback] No token found, setting default session user values");
       }
-      
-      console.log("📤 [Session Callback] Final session object:", {
-        hasUser: !!session.user,
-        userId: session.user?.id,
-        userRole: session.user?.role,
-        expires: session.expires
-      });
-      
       return session;
     },
     async redirect({ url, baseUrl }) {
@@ -674,19 +620,19 @@ export const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV === "development",
   
   // Add warning logger for auth issues
-  logger: {
-    error(code, ...message) {
-      console.error("❌ [NextAuth Error]", code, ...message);
-    },
-    warn(code, ...message) {
-      console.warn("⚠️ [NextAuth Warning]", code, ...message);
-    },
-    debug(code, ...message) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("🔍 [NextAuth Debug]", code, ...message);
-      }
-    },
-  },
+  // logger: {
+  //   error(code, ...message) {
+  //     console.error("❌ [NextAuth Error]", code, ...message);
+  //   },
+  //   warn(code, ...message) {
+  //     console.warn("⚠️ [NextAuth Warning]", code, ...message);
+  //   },
+  //   debug(code, ...message) {
+  //     if (process.env.NODE_ENV === "development") {
+  //       console.log("🔍 [NextAuth Debug]", code, ...message);
+  //     }
+  //   },
+  // },
 };
 
 // Helper functions for OTP management

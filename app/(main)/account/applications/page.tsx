@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import ApplicationTracker from '@/components/applications/ApplicationTracker';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -36,11 +38,13 @@ export default function ApplicationsPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   const fetchApplications = async (retryCount = 0, showToast = false) => {
-    const token = localStorage.getItem('token');
-
-    if (!token) {
+    // Check if user is authenticated via NextAuth session
+    if (!session?.user) {
       setError('Unauthorized. Please login.');
       setLoading(false);
       return;
@@ -51,7 +55,6 @@ export default function ApplicationsPage() {
       const response = await fetch('/api/applications', {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         cache: 'no-store',
       });
@@ -59,7 +62,8 @@ export default function ApplicationsPage() {
       if (!response.ok) {
         if (response.status === 401) {
           setError('Unauthorized. Please log in again.');
-          localStorage.removeItem('token');
+          // Redirect to login page
+          router.push('/auth/login');
         } else {
           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
           setError(errorData.error || 'Failed to load applications. Please try again later.');
@@ -109,12 +113,24 @@ export default function ApplicationsPage() {
   };
 
   useEffect(() => {
+    // Wait for session to load
+    if (status === 'loading') {
+      return;
+    }
+    
+    // Redirect to login if not authenticated
+    if (!session?.user) {
+      router.push('/auth/login');
+      return;
+    }
+    
+    // Fetch applications if authenticated
     fetchApplications();
-  }, []);
+  }, [session, status, router]);
 
   const stats = getStatusStats();
 
-  if (loading) {
+  if (loading || status === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">

@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 
 export async function GET(req: Request,  { params }: { params: Promise<{ id: string }> }) { 
    const { id} = await params 
   try {
-    const token = (await cookies()).get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decodedToken = await verifyJWT(token)
-    if (!decodedToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+   // Use NextAuth authentication instead of custom JWT
+     const authError = await requireAuth();
+     if (authError) return authError;
+     
+     const user = await getAuthenticatedUser();
+     if (!user) {
+       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+     }
 
     const quotation = await prisma.quotation.findUnique({
       where: { id: id },
@@ -37,7 +35,7 @@ export async function GET(req: Request,  { params }: { params: Promise<{ id: str
     }
 
     // Check if the user is authorized to view this quotation
-    if (quotation.userId !== decodedToken.payload.id && decodedToken.payload.role !== "ADMIN") {
+    if (quotation.userId !== user.id && user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
@@ -51,17 +49,15 @@ export async function GET(req: Request,  { params }: { params: Promise<{ id: str
 export async function PUT(req: Request,  { params }: { params: Promise<{ id: string }> }) { 
   const { id} = await params 
   try {
-    const token = (await cookies()).get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  
+     // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decodedToken = await verifyJWT(token)
-
-    if (!decodedToken || !decodedToken.payload.id || decodedToken.payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
 
     const { status } = await req.json()
 
@@ -80,16 +76,13 @@ export async function PUT(req: Request,  { params }: { params: Promise<{ id: str
 export async function DELETE(req: Request,  { params }: { params: Promise<{ id: string }> }) { 
   const { id} = await params 
   try {
-    const token = (await cookies()).get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  
-    }
-
-    const decodedToken = await verifyJWT(token)
-
-    if (!decodedToken || !decodedToken.payload.id || decodedToken.payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Delete the quotation items first

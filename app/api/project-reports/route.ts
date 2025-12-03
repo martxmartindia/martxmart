@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server"
 import {prisma} from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 export async function POST(request: Request) {
   try {
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id
+    const userId = user.id
 
     const data = await request.json()
     const { projectId, paymentMethod, applicationData } = data
@@ -54,19 +50,16 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded = await verifyJwtToken(token)  
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    const userId = decoded.payload.id
+    const userId = user.id
     
     // Get all project reports for the user
     const projectReports = await prisma.projectReport.findMany({

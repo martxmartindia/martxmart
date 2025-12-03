@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
-import { cookies, headers } from "next/headers";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 export async function GET(
   request: Request,
@@ -9,26 +8,16 @@ export async function GET(
 ) {
   try {
     const { applicationId } = await params;
-
-    // Get token from Authorization header or cookies
-    const headersList = await headers();
-    const authHeader = headersList.get("authorization");
-    let token = authHeader?.replace("Bearer ", "");
+  // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
     
-    if (!token) {
-      token = (await cookies()).get("token")?.value;
-    }
-
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    const userId = user.id as string;
 
     // Try to find in career applications first
     const careerApplication = await prisma.application.findFirst({

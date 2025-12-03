@@ -1,19 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
+
 
 export async function POST(req: NextRequest) {
     try {
-        const token = (await cookies()).get("token")?.value
-        if (!token) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-        const decodedToken = await verifyJWT(token)
-        if (!decodedToken) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-        const userId = decodedToken.payload.id
+     // Use NextAuth authentication instead of custom JWT
+       const authError = await requireAuth();
+       if (authError) return authError;
+       
+       const user = await getAuthenticatedUser();
+       if (!user) {
+         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+       }
+        const userId = user.id
         const { items, addressId } = await req.json()
 
         if (!items || !Array.isArray(items) || items.length === 0) {
@@ -129,20 +129,19 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     try {
-        const token = (await cookies()).get("token")?.value
-        if (!token) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const decodedToken = await verifyJWT(token)
-        if (!decodedToken || !decodedToken.payload) {
-            return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-        }
+  // Use NextAuth authentication instead of custom JWT
+    const authError = await requireAuth();
+    if (authError) return authError;
+    
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
         const url = new URL(req.url)
         const userId = url.searchParams.get("userId")
 
         // For admin users, allow filtering by userId
-        if (decodedToken.payload.role === "ADMIN" && userId) {
+        if (user.role === "ADMIN" && userId) {
             const quotations = await prisma.quotation.findMany({
                 where: { userId },
                 include: { items: true },
@@ -154,7 +153,7 @@ export async function GET(req: NextRequest) {
 
         // For regular users, only return their own quotations
         const quotations = await prisma.quotation.findMany({
-            where: { userId: decodedToken.payload.id as string },
+            where: { userId: user.id as string },
             include: { items: true },
             orderBy: { createdAt: "desc" },
         })
