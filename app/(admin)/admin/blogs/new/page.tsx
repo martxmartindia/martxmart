@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -14,7 +15,6 @@ import { Loader2, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { TipTapEditor } from '@/components/tiptap-editor'
 import { ImageUpload } from '@/components/imageUpload'
-import { useAdmin } from '@/store/admin'
 
 const blogSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters'),
@@ -33,9 +33,10 @@ const blogSchema = z.object({
 type BlogFormValues = z.infer<typeof blogSchema>
  
 export default function NewBlogPage() {
-  const router = useRouter()
-  const { isAuthenticated } = useAdmin()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+   const router = useRouter()
+   const { data: session, status } = useSession()
+   const isAuthenticated = status === 'authenticated' && session?.user?.role === 'ADMIN'
+   const [isSubmitting, setIsSubmitting] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
   
   const form = useForm<BlogFormValues>({

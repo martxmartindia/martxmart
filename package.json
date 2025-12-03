@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "init-elasticsearch": "npx tsx scripts/init-elasticsearch.ts"
+    "init-elasticsearch": "npx tsx scripts/init-elasticsearch.ts",
+    "create-admin": "npx tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.15.0",

@@ -1,23 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 
 export async function GET(req: Request) {
   try {
     // Check authentication
-    const token = (await cookies()).get('token')?.value
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-    
-    const decoded = await verifyJwtToken(token)
-    
-    if (!decoded || !decoded.payload || (decoded.payload.role !== 'ADMIN' && decoded.payload.role !== 'AUTHOR')) {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'AUTHOR')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

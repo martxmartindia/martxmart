@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { hashPassword, verifyJWT as verifyJwtToken } from "@/utils/auth";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { hashPassword } from "@/utils/auth";
 
 export async function GET(req: Request) {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || (await decoded).payload?.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
     // Get query parameters
@@ -87,17 +86,15 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || (await decoded).payload?.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
     // Get request body

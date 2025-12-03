@@ -9,7 +9,6 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/store/auth";
 import { toast } from "sonner";
 import Image from "next/image";
 import {
@@ -32,7 +31,6 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { setUser } = useAuth();
   
   const {
     register,
@@ -56,14 +54,7 @@ export default function AdminLoginPage() {
         toast.error(result.error || "Invalid credentials");
       } else if (result?.ok) {
         toast.success("Admin login successful!");
-        
-        // Update auth store
-        const session = await fetch("/api/auth/session").then(r => r.json());
-        if (session?.user) {
-          setUser(session.user);
-        }
-        
-        router.push("/admin/dashboard");
+        router.push("/admin");
       }
     } catch (error: any) {
       toast.error("Login failed. Please try again.");

@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
 
 export async function GET(request: Request) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || decoded.payload.role !== "ADMIN") {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

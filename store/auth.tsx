@@ -28,6 +28,7 @@ interface AuthContextType extends AuthState {
   signOut: () => void;
   updateUser: (user: User | null) => void;
   setUser: (user: User | null) => void;
+  setToken: (token: string) => void;
   updateUserPreferences: (preferences: Partial<User['preferences']>) => void;
   setError: (error: string | null) => void;
   setLoading: (isLoading: boolean) => void;
@@ -96,6 +97,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateUser(user);
   };
 
+  const setToken = (token: string) => {
+    // For now, just log the token. In a real implementation,
+    // you might store it or handle it differently
+    console.log('Token set:', token);
+  };
+
   const updateUserPreferences = (preferences: Partial<User['preferences']>) => {
     if (state.user) {
       const updatedUser = {
@@ -128,6 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut: handleSignOut,
     updateUser,
     setUser,
+    setToken,
     updateUserPreferences,
     setError,
     setLoading,

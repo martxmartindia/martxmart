@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/utils/auth';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
 
-    const user = await verifyJWT(token);
-    if (!user) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 403 });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url);
@@ -84,12 +88,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
 
-    const user = await verifyJWT(token);
-    if (!user) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 403 });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
     
     const body = await request.json();

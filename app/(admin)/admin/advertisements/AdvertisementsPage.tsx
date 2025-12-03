@@ -49,12 +49,7 @@ export default function AdvertisementsPage() {
         ...(statusFilter !== 'all' && { isActive: statusFilter })
       });
 
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/advertisements?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch(`/api/admin/advertisements?${params}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -75,12 +70,8 @@ export default function AdvertisementsPage() {
     if (!confirm('Are you sure you want to delete this advertisement?')) return;
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`/api/admin/advertisements/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        method: 'DELETE'
       });
 
       const data = await response.json();

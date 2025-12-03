@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 
 export async function GET(req: Request) {
   try {
-    // Check if user is admin
-    const token = (await cookies()).get("token")?.value
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded!== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
     const { searchParams } = new URL(req.url)
@@ -86,24 +84,18 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    // Check if user is admin or vendor
-    const token = (await cookies()).get("token")?.value
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id
-    const userRole = decoded.payload.role
+    const userId = session.user.id
+    const userRole = session.user.role
 
     if (userRole !== "ADMIN" && userRole !== "VENDOR") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Access denied. Admin or Vendor role required." }, { status: 403 })
     }
 
     const { businessName, businessType, gstin, panNumber } = await req.json()

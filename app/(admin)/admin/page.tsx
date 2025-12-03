@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -73,6 +74,7 @@ interface DashboardData {
 
 export default function AdminDashboardPage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [timeRange, setTimeRange] = useState("7days")
@@ -123,8 +125,24 @@ export default function AdminDashboardPage() {
   }
 
   useEffect(() => {
+    // Check authentication and admin role
+    if (status === 'loading') {
+      return // Still loading
+    }
+    
+    if (!session?.user) {
+      router.push('/auth/login')
+      return
+    }
+    
+    if (session.user.role !== 'ADMIN') {
+      router.push('/')
+      return
+    }
+    
+    // User is authenticated admin, fetch dashboard data
     fetchDashboardData()
-  }, [timeRange])
+  }, [session, status, router, timeRange])
 
   if (error) {
     return (
@@ -140,7 +158,7 @@ export default function AdminDashboardPage() {
     )
   }
 
-  if (isLoading) {
+  if (isLoading || status === 'loading') {
     return (
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

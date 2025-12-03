@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { useAdmin } from '@/store/admin';
 import AdminSidebar from '@/components/admin-sidebar';
 import { Menu } from 'lucide-react';
 
@@ -14,13 +14,17 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const { isAuthenticated, isAdmin, isLoading, token, logout } = useAdmin();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  const isLoading = status === 'loading';
+  const isAuthenticated = status === 'authenticated' && session?.user;
+  const isAdmin = session?.user?.role === 'ADMIN';
+
   useEffect(() => {
     // Redirect to login if not authenticated or not admin
-    if (!isLoading && (!isAuthenticated || !isAdmin || !token)) {
+    if (!isLoading && (!isAuthenticated || !isAdmin)) {
       toast.error('You do not have permission to access the admin panel');
       router.push('/auth/admin/login?callbackUrl=/admin');
     }
@@ -36,12 +40,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [router, isAuthenticated, isAdmin, isLoading, token]);
+  }, [router, isAuthenticated, isAdmin, isLoading]);
 
   const handleLogout = async () => {
-    await logout();
+    await signOut({ callbackUrl: '/auth/admin/login' });
     toast.success('Logged out successfully');
-    router.push('/auth/admin/login');
   };
 
   if (isLoading) {
@@ -73,12 +76,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="flex h-screen overflow-hidden">
       {/* Mobile overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-      
+
       <AdminSidebar isOpen={isSidebarOpen} onLogout={handleLogout} />
       <div className="flex-1 overflow-y-auto">
         {/* Mobile menu button */}

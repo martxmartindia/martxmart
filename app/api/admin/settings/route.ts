@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || decoded.payload.role !== "ADMIN") {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -34,11 +31,8 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || decoded.payload.role !== "ADMIN") {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

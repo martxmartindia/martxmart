@@ -1,26 +1,19 @@
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
-import { cookies } from "next/headers";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   try {
- const token = (await cookies()).get('token')?.value
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    
-    const decoded = await verifyJWT(token)
-    
-    if (!decoded || !decoded.payload || (decoded.payload.role !== 'ADMIN')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
     const searchParams = new URL(req.url).searchParams;
     const page = parseInt(searchParams.get("page") || "1");
@@ -142,12 +135,15 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
 
-    const user = await verifyJWT(token);
-    if (!user || user.payload.role !== "ADMIN") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
     const { id, featured, isDeleted } = await req.json();

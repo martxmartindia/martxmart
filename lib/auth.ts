@@ -366,7 +366,7 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Admin Credentials Provider
+    // Admin Credentials Provider (using Admin table)
     CredentialsProvider({
       id: "admin-credentials",
       name: "Admin Credentials",
@@ -375,40 +375,73 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
+        console.log("🔍 [Admin Provider] admin-credentials called:", {
+          hasEmail: !!credentials?.email,
+          hasPassword: !!credentials?.password,
+          email: credentials?.email
+        });
+        
         if (!credentials?.email || !credentials?.password) {
+          console.error("❌ [Admin Provider] Missing email or password");
           return null;
         }
 
         try {
-          // Find admin user
-          const user = await prisma.user.findUnique({
+          console.log("🔍 [Admin Provider] Looking for admin with email:", credentials.email.toLowerCase());
+          
+          // Find admin in Admin table
+          const admin = await prisma.admin.findUnique({
             where: { email: credentials.email.toLowerCase() },
           });
 
-          if (!user || user.role !== "ADMIN" || !user.password) {
+          if (!admin) {
+            console.error("❌ [Admin Provider] No admin found with email:", credentials.email.toLowerCase());
             return null;
           }
+          
+          if (!admin.password) {
+            console.error("❌ [Admin Provider] Admin found but no password set:", credentials.email.toLowerCase());
+            return null;
+          }
+          
+          console.log("🔍 [Admin Provider] Admin found:", {
+            id: admin.id,
+            name: admin.name,
+            role: admin.role,
+            hasPassword: !!admin.password
+          });
 
           // Verify password
           const isValidPassword = await verifyPassword(
             credentials.password,
-            user.password
+            admin.password
           );
 
+          console.log("🔍 [Admin Provider] Password verification:", { isValidPassword });
+
           if (!isValidPassword) {
+            console.error("❌ [Admin Provider] Invalid password for admin:", credentials.email.toLowerCase());
             return null;
           }
 
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-            image: user.image,
+          const result = {
+            id: admin.id,
+            name: admin.name,
+            email: admin.email,
+            phone: admin.phone,
+            role: admin.role,
+            image: null, // Admin table doesn't have image field
           };
+          
+          console.log("✅ [Admin Provider] Authentication successful:", {
+            id: result.id,
+            role: result.role,
+            email: result.email
+          });
+
+          return result;
         } catch (error) {
-          console.error("Admin credentials authorization error:", error);
+          console.error("❌ [Admin Provider] Exception in admin-credentials:", error);
           return null;
         }
       },

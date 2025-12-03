@@ -1,20 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/utils/auth';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const user = await verifyJWT(token);
-    if (!user) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-    // Temporarily allowing all authenticated users for testing
-    // if (user.payload.role !== "ADMIN") {
-    //   return NextResponse.json({ message: "Unauthorized", role: user?.payload?.role }, { status: 403 });
-    // }
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -69,12 +63,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const user = await verifyJWT(token);
-    if (!user) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const data = await req.json();
@@ -116,12 +107,9 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const user = await verifyJWT(token);
-    if (!user) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const { id, ...data } = await req.json();
@@ -156,12 +144,9 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const user = await verifyJWT(token);
-    if (!user) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await req.json();

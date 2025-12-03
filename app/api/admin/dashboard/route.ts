@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
 
 // Helper function to generate sales data
 function generateSalesData(months: number) {
@@ -64,17 +64,15 @@ function generateSystemLogs(count: number) {
 
 export async function GET(req: Request) {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
 
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded = await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
     // Get query parameters
