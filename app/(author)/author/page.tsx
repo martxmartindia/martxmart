@@ -177,11 +177,11 @@ export default function AuthorDashboardPage() {
                         <td className="py-3 px-4 text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="icon" asChild>
-                              <Link href={`/blogs/${blog.slug}`} target="_blank">
+                              <Link href={`/blog/${blog.slug}`} target="_blank">
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => router.push(`/author/blogs/${blog.id}`)}>
+                            <Button variant="ghost" size="icon" onClick={() => router.push(`/author/blogs/edit/${blog.id}`)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button

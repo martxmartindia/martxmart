@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { prisma } from '@/lib/prisma';
 import { getAuthenticatedUser, requireAuth } from '@/lib/auth-helpers';
-import Prisma from '@prisma/client';
 
 
 cloudinary.config({
@@ -172,7 +171,7 @@ export async function POST(request: Request) {
         projectId: project.id,
         status: 'Pending',
         paymentStatus: 'Pending',
-        paymentAmount: new Prisma.Decimal(project.projectReportCost),
+        paymentAmount: project.projectReportCost,
         applicationData,
         createdAt: new Date(),
       },

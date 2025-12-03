@@ -90,7 +90,8 @@ Create a `.env` file in the root directory and add the following variables:
 DATABASE_URL="postgresql://user:password@localhost:5432/martXmart"
 
 # Authentication
-JWT_SECRET="your-jwt-secret"
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
 
 # Razorpay
 RAZORPAY_KEY_ID="your-razorpay-key-id"
@@ -297,10 +298,6 @@ NEXT_PUBLIC_API_URL=https://api.example.com
 
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/martXmart
-
-# Authentication
-JWT_SECRET=your-jwt-secret
-JWT_SECRET=your-refresh-token-secret
 
 # External Services
 RAZORPAY_KEY_ID=your-razorpay-key-id

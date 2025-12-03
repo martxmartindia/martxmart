@@ -50,13 +50,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const userId = finduser.id
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id:userId as string },
-    })
-
-    if (!user || user.role !== "ADMIN") {
+    if (!finduser || (finduser.role !== "ADMIN" && finduser.role !== "AUTHOR") ) {
       return NextResponse.json({ error: "Unauthorized. Only admins can create categories" }, { status: 403 })
     }
 

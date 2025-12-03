@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { signJWT } from "@/utils/auth";
 import { NextResponse } from "next/server";
 import { ApiError, handleApiError } from "@/lib/api-error";
 import { z } from "zod";
+import { encode } from 'next-auth/jwt';
 
 const verifyOtpSchema = z.object({
   phone: z.string().min(10, "Invalid phone number"),
@@ -39,15 +39,17 @@ export async function POST(req: Request) {
       throw ApiError.badRequest("OTP has expired");
     }
 
-    if (!process.env.JWT_SECRET) {
-      throw ApiError.internal("Server configuration error");
-    }
-
-    const token =await signJWT({
-      id: user.id,
-      email: user.email as string,
-      name: user.name,
-      role: user.role,
+    // Create NextAuth JWT token
+    const token = await encode({
+      token: {
+        sub: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || undefined,
+        role: user.role,
+      },
+      secret: process.env.NEXTAUTH_SECRET || 'fallback-secret',
+      maxAge: 24 * 60 * 60, // 24 hours
     });
 
     await prisma.user.update({
@@ -57,11 +59,21 @@ export async function POST(req: Request) {
 
     const { ...userWithoutOtp } = user;
 
-    return NextResponse.json({
+    // Set NextAuth session cookie
+    const response = NextResponse.json({
       message: "Login successful",
-      token,
       user: userWithoutOtp
     }, { status: 200 });
+
+    response.cookies.set('next-auth.session-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60, // 24 hours
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error("Error during login:", error);
     return handleApiError(error);
