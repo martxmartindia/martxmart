@@ -1,7 +1,7 @@
 'use client'; // Mark as client component
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 
 interface User {
   id: string;
@@ -31,7 +31,7 @@ interface AuthContextType extends AuthState {
   updateUserPreferences: (preferences: Partial<User['preferences']>) => void;
   setError: (error: string | null) => void;
   setLoading: (isLoading: boolean) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,8 +77,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [session, status]);
 
-  const signOut = () => {
-    // This will be handled by NextAuth
+  const handleSignOut = async () => {
+    console.log("🔍 [Auth Store] Calling NextAuth signOut...");
+    await signOut({ redirect: false });
+    console.log("✅ [Auth Store] NextAuth signOut completed, redirecting to home");
     window.location.href = '/';
   };
 
@@ -117,13 +119,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     console.log("🔍 [Auth Store Logout] Starting logout process...");
-    await signOut();
-    console.log("✅ [Auth Store Logout] SignOut completed, NextAuth will handle cleanup");
+    await handleSignOut();
+    console.log("✅ [Auth Store Logout] Logout completed successfully");
   };
 
   const value: AuthContextType = {
     ...state,
-    signOut,
+    signOut: handleSignOut,
     updateUser,
     setUser,
     updateUserPreferences,
