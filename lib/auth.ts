@@ -461,19 +461,22 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Find author user
-          const user = await prisma.user.findUnique({
+          // Find author in Author table
+          const author = await prisma.author.findUnique({
             where: { email: credentials.email.toLowerCase() },
+            include: {
+              user: true, // Include user relation for additional data
+            },
           });
 
-          if (!user || user.role !== "AUTHOR" || !user.password) {
+          if (!author || !author.password) {
             return null;
           }
 
           // Verify password
           const isValidPassword = await verifyPassword(
             credentials.password,
-            user.password
+            author.password
           );
 
           if (!isValidPassword) {
@@ -481,12 +484,12 @@ export const authOptions: NextAuthOptions = {
           }
 
           return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-            image: user.image,
+            id: author.id,
+            name: author.name,
+            email: author.email,
+            phone: author.user?.phone || null,
+            role: "AUTHOR",
+            image: author.profileImage || author.user?.image || null,
           };
         } catch (error) {
           console.error("Author credentials authorization error:", error);

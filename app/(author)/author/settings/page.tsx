@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { toast } from "sonner"
-import { useAuthor } from "@/store/author"
+import { useSession } from "next-auth/react"
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
@@ -26,7 +26,7 @@ const passwordSchema = z
 type PasswordFormValues = z.infer<typeof passwordSchema>
 
 export default function AuthorSettingsPage() {
-  const {author}=useAuthor()
+  const { data: session, status } = useSession()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<PasswordFormValues>({
@@ -68,7 +68,7 @@ export default function AuthorSettingsPage() {
     }
   }
 
-  if (!author) {
+  if (status === 'loading') {
     return (
       <div className="container mx-auto py-10 flex justify-center items-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-orange-600 mr-2" />

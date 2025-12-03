@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/utils/auth';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 // Helper function to check pending orders
 async function hasUnresolvedOrders(userId: string, role: string) {
@@ -23,18 +24,13 @@ async function hasPendingRefunds(userId: string, role: string) {
 
 export async function POST(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decodedToken = await verifyJWT(token);
-    if (!decodedToken) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const { reason } = await req.json();
-    const userId = decodedToken.payload.sub;
+    const userId = session.user.id;
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
@@ -86,17 +82,12 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decodedToken = await verifyJWT(token);
-    if (!decodedToken) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = decodedToken.payload.sub;
+    const userId = session.user.id;
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user?.deletionRequestedAt) {

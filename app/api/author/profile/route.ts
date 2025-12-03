@@ -1,23 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/utils/auth';
-import { cookies } from 'next/headers';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 // GET /api/author/profile - Get author profile
 export async function GET() {
   try {
-    const token = (await cookies()).get('token')?.value;
-    if (!token) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'AUTHOR') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || !decoded.payload.id) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const author = await prisma.author.findUnique({
-      where: { id: decoded.payload.id as string },
+      where: { id: session.user.id },
       select: {
         id: true,
         name: true,
@@ -51,20 +46,15 @@ export async function GET() {
 // PUT /api/author/profile - Update author profile
 export async function PUT(req: Request) {
   try {
-    const token = (await cookies()).get('token')?.value;
-    if (!token) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'AUTHOR') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || !decoded.payload.id) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const data = await req.json();
 
     const updatedAuthor = await prisma.author.update({
-      where: { id: decoded.payload.id as string },
+      where: { id: session.user.id },
       data: {
         name: data.name,
         email: data.email,

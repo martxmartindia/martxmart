@@ -1,24 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/utils/auth';
-import { cookies } from 'next/headers';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const token = (await cookies()).get('token')?.value;
-    if (!token) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'AUTHOR') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || !decoded.payload.id) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     // Get total blog posts
     const totalBlogs = await prisma.blog.count({
       where: {
-        authorId: decoded.payload.id,
+        authorId: session.user.id,
         isDeleted: false,
       },
     });
@@ -26,7 +21,7 @@ export async function GET() {
     // Get published blog posts
     const publishedBlogs = await prisma.blog.count({
       where: {
-        authorId: decoded.payload.id,
+        authorId: session.user.id,
         status: 'PUBLISHED',
         isDeleted: false,
       },
@@ -36,7 +31,7 @@ export async function GET() {
     const totalViews = await prisma.view.count({
       where: {
         blog: {
-          authorId: decoded.payload.id,
+          authorId: session.user.id,
           isDeleted: false,
         },
       },
@@ -46,7 +41,7 @@ export async function GET() {
     const totalLikes = await prisma.like.count({
       where: {
         blog: {
-          authorId: decoded.payload.id,
+          authorId: session.user.id,
           isDeleted: false,
         },
       },
@@ -59,7 +54,7 @@ export async function GET() {
           in: (await prisma.blogComment.findMany({
             where: {
               post: {
-                authorId: decoded.payload.id,
+                authorId: session.user.id,
                 isDeleted: false,
               },
             },
@@ -72,7 +67,7 @@ export async function GET() {
     // Get recent blog performance
     const recentBlogs = await prisma.blog.findMany({
       where: {
-        authorId: decoded.payload.id,
+        authorId: session.user.id,
         isDeleted: false,
       },
       select: {

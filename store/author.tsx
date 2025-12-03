@@ -1,28 +1,7 @@
-// app/lib/author/context.tsx
+// app/store/author.tsx
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-
-export interface Author {
-  id: string;
-  userId: string;
-  name: string;
-  email?: string;
-  password?: string;
-  imageUrl?: string;
-  bio?: string;
-  specialty?: string[];
-  location?: string;
-  socialLinks?: {
-    twitter?: string;
-    linkedin?: string;
-    github?: string;
-    website?: string;
-  };
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface AuthorContent {
   id: string;
@@ -58,11 +37,6 @@ export interface AuthorAnalytics {
 }
 
 interface AuthorState {
-  // Auth State
-  author: Author | null;
-  isLoading: boolean;
-  error: string | null;
-  isAuthenticated: boolean;
   // Content State
   contents: AuthorContent[];
   currentContent: AuthorContent | null;
@@ -73,12 +47,6 @@ interface AuthorState {
 }
 
 interface AuthorContextType extends AuthorState {
-  // Auth Actions
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  setAuthor: (author: Author | null) => void;
-  updateAuthor: (data: Partial<Author>) => Promise<void>;
-  updateAuthorImage: (imageUrl: string) => Promise<void>;
   // Content Actions
   setContents: (contents: AuthorContent[]) => void;
   setCurrentContent: (content: AuthorContent | null) => void;
@@ -100,10 +68,6 @@ interface AuthorProviderProps {
 
 export const AuthorProvider: React.FC<AuthorProviderProps> = ({ children }) => {
   const [state, setState] = useState<AuthorState>({
-    author: null,
-    isLoading: true,
-    error: null,
-    isAuthenticated: false,
     contents: [],
     currentContent: null,
     contentLoading: false,
@@ -111,129 +75,12 @@ export const AuthorProvider: React.FC<AuthorProviderProps> = ({ children }) => {
     analytics: null,
   });
 
-  // Hydrate state from localStorage on client-side mount
-  useEffect(() => {
-    const hydrateState = () => {
-      try {
-        if (typeof window !== 'undefined') {
-          const storedData = localStorage.getItem('author-storage');
-          if (storedData) {
-            const parsed = JSON.parse(storedData);
-            setState((prev) => ({
-              ...prev,
-              author: parsed.author || null,
-              isAuthenticated: !!parsed.author,
-              contents: parsed.contents || [],
-              currentContent: parsed.currentContent || null,
-              analytics: parsed.analytics || null,
-              isLoading: false,
-            }));
-          } else {
-            setState((prev) => ({ ...prev, isLoading: false }));
-          }
-        } else {
-          setState((prev) => ({ ...prev, isLoading: false }));
-        }
-      } catch (error) {
-        setState((prev) => ({ ...prev, error: 'Failed to hydrate state', isLoading: false }));
-      }
-    };
-
-    hydrateState();
-  }, []);
-
-  // Persist state to localStorage
-  const persistState = (newState: Partial<AuthorState>) => {
-    const updatedState = { ...state, ...newState };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('author-storage', JSON.stringify(updatedState));
-    }
-    setState(updatedState);
-  };
-
-  const login = async (email: string, password: string) => {
-    try {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
-      const response = await fetch('/api/auth/author', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.text();
-        throw new Error(data || 'Login failed');
-      }
-
-      const data = await response.json();
-      persistState({ author: data.author, isAuthenticated: true });
-    } catch (error) {
-      persistState({ error: (error as Error).message, isAuthenticated: false });
-      throw error;
-    } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  const logout = async () => {
-    try {
-      setState((prev) => ({ ...prev, isLoading: true }));
-      await fetch('/api/auth/author/logout', { method: 'POST' });
-      persistState({ author: null, isAuthenticated: false, contents: [], currentContent: null, analytics: null });
-    } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  const setAuthor = (author: Author | null) => {
-    persistState({ author, isAuthenticated: !!author });
-  };
-
-  const updateAuthor = async (data: Partial<Author>) => {
-    try {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
-      const response = await fetch('/api/author/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update author');
-      const updatedAuthor = await response.json();
-      persistState({
-        author: state.author ? { ...state.author, ...updatedAuthor } : null,
-      });
-    } catch (error) {
-      persistState({ error: (error as Error).message });
-    } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  const updateAuthorImage = async (imageUrl: string) => {
-    try {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
-      const response = await fetch('/api/author/image', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl }),
-      });
-      if (!response.ok) throw new Error('Failed to update author image');
-      persistState({
-        author: state.author ? { ...state.author, imageUrl } : null,
-      });
-    } catch (error) {
-      persistState({ error: (error as Error).message });
-    } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
-
   const setContents = (contents: AuthorContent[]) => {
-    persistState({ contents });
+    setState((prev) => ({ ...prev, contents }));
   };
 
   const setCurrentContent = (content: AuthorContent | null) => {
-    persistState({ currentContent: content });
+    setState((prev) => ({ ...prev, currentContent: content }));
   };
 
   const fetchContents = async () => {
@@ -242,9 +89,9 @@ export const AuthorProvider: React.FC<AuthorProviderProps> = ({ children }) => {
       const response = await fetch('/api/author/blogs');
       if (!response.ok) throw new Error('Failed to fetch blogs');
       const contents = await response.json();
-      persistState({ contents });
+      setState((prev) => ({ ...prev, contents }));
     } catch (error) {
-      persistState({ contentError: (error as Error).message });
+      setState((prev) => ({ ...prev, contentError: (error as Error).message }));
     } finally {
       setState((prev) => ({ ...prev, contentLoading: false }));
     }
@@ -260,9 +107,9 @@ export const AuthorProvider: React.FC<AuthorProviderProps> = ({ children }) => {
       });
       if (!response.ok) throw new Error('Failed to create content');
       const newContent = await response.json();
-      persistState({ contents: [...state.contents, newContent] });
+      setState((prev) => ({ ...prev, contents: [...prev.contents, newContent] }));
     } catch (error) {
-      persistState({ contentError: (error as Error).message });
+      setState((prev) => ({ ...prev, contentError: (error as Error).message }));
     } finally {
       setState((prev) => ({ ...prev, contentLoading: false }));
     }
@@ -278,11 +125,12 @@ export const AuthorProvider: React.FC<AuthorProviderProps> = ({ children }) => {
       });
       if (!response.ok) throw new Error('Failed to update content');
       const updatedContent = await response.json();
-      persistState({
-        contents: state.contents.map((c) => (c.id === id ? updatedContent : c)),
-      });
+      setState((prev) => ({
+        ...prev,
+        contents: prev.contents.map((c) => (c.id === id ? updatedContent : c)),
+      }));
     } catch (error) {
-      persistState({ contentError: (error as Error).message });
+      setState((prev) => ({ ...prev, contentError: (error as Error).message }));
     } finally {
       setState((prev) => ({ ...prev, contentLoading: false }));
     }
@@ -295,11 +143,12 @@ export const AuthorProvider: React.FC<AuthorProviderProps> = ({ children }) => {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete content');
-      persistState({
-        contents: state.contents.filter((c) => c.id !== id),
-      });
+      setState((prev) => ({
+        ...prev,
+        contents: prev.contents.filter((c) => c.id !== id),
+      }));
     } catch (error) {
-      persistState({ contentError: (error as Error).message });
+      setState((prev) => ({ ...prev, contentError: (error as Error).message }));
     } finally {
       setState((prev) => ({ ...prev, contentLoading: false }));
     }
@@ -313,11 +162,12 @@ export const AuthorProvider: React.FC<AuthorProviderProps> = ({ children }) => {
       });
       if (!response.ok) throw new Error('Failed to publish content');
       const publishedContent = await response.json();
-      persistState({
-        contents: state.contents.map((c) => (c.id === id ? publishedContent : c)),
-      });
+      setState((prev) => ({
+        ...prev,
+        contents: prev.contents.map((c) => (c.id === id ? publishedContent : c)),
+      }));
     } catch (error) {
-      persistState({ contentError: (error as Error).message });
+      setState((prev) => ({ ...prev, contentError: (error as Error).message }));
     } finally {
       setState((prev) => ({ ...prev, contentLoading: false }));
     }
@@ -325,34 +175,30 @@ export const AuthorProvider: React.FC<AuthorProviderProps> = ({ children }) => {
 
   const fetchAnalytics = async () => {
     try {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+      setState((prev) => ({ ...prev, contentLoading: true, contentError: null }));
       const response = await fetch('/api/author/analytics');
       if (!response.ok) throw new Error('Failed to fetch analytics');
       const analyticsData = await response.json();
-      persistState({ analytics: analyticsData });
+      setState((prev) => ({ ...prev, analytics: analyticsData }));
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
-      persistState({ error: (error as Error).message });
+      setState((prev) => ({ ...prev, contentError: (error as Error).message }));
     } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
+      setState((prev) => ({ ...prev, contentLoading: false }));
     }
   };
 
   const updateAnalytics = (data: Partial<AuthorAnalytics>) => {
-    persistState({
-      analytics: state.analytics
-        ? { ...state.analytics, ...data }
+    setState((prev) => ({
+      ...prev,
+      analytics: prev.analytics
+        ? { ...prev.analytics, ...data }
         : { totalViews: 0, totalLikes: 0, totalComments: 0, readerEngagement: 0, ...data },
-    });
+    }));
   };
 
   const value: AuthorContextType = {
     ...state,
-    login,
-    logout,
-    setAuthor,
-    updateAuthor,
-    updateAuthorImage,
     setContents,
     setCurrentContent,
     fetchContents,
@@ -373,18 +219,4 @@ export const useAuthor = (): AuthorContextType => {
     throw new Error('useAuthor must be used within an AuthorProvider');
   }
   return context;
-};
-
-export const getAuthorData = (): Author | null => {
-  if (typeof window === 'undefined') return null; // Server-side
-  try {
-    const storedData = localStorage.getItem('author-storage');
-    if (storedData) {
-      const parsed = JSON.parse(storedData);
-      return parsed.author || null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
 };

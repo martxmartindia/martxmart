@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { ImageUpload } from "@/components/imageUpload"
-import { useAuthor } from "@/store/author"
+import { useSession } from "next-auth/react"
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -27,7 +27,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>
 
 export default function AuthorProfilePage() {
   const router = useRouter()
-  const {author,isLoading,updateAuthor} = useAuthor()
+  const { data: session, status } = useSession()
   const [isLoadings, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -42,8 +42,10 @@ export default function AuthorProfilePage() {
   })
 
   useEffect(() => {
-    if (!author && isLoading) {
-      router.push("/")
+    if (status === 'loading') return;
+
+    if (status === 'unauthenticated' || session?.user?.role !== 'AUTHOR') {
+      router.push("/auth/author/login")
       return
     }
 
@@ -71,10 +73,10 @@ export default function AuthorProfilePage() {
       }
     }
 
-    if (author) {
+    if (session?.user) {
       fetchProfile()
     }
-  }, [author, router, form])
+  }, [session, status, router, form])
 
   const onSubmit = async (data: ProfileFormValues) => {
     setIsSubmitting(true)
@@ -95,15 +97,6 @@ export default function AuthorProfilePage() {
       }
 
       toast.success("Profile updated successfully")
-
-      // Update user in auth context
-      if (updateAuthor) {
-        updateAuthor({
-          ...author,
-          name: data.name,
-          email: data.email,
-        })
-      }
     } catch (error: any) {
       toast.error(error.message || "Failed to update profile")
     } finally {

@@ -1,26 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(req: Request,
   { params }: { params: Promise<{ blogId: string }> }
 ) {
   const { blogId } = await params;
   try {
-    const token = req.headers.get('Authorization')?.split(' ')[1];
-    if (!token) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const verified = await verifyJWT(token);
-    if (!verified || verified.payload.role !== 'ADMIN' && verified.payload.role !=='AUTHOR') {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'AUTHOR')) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const blog = await prisma.blog.findUnique({
       where: {
         id: blogId,
-        authorId: verified.payload.sub,
+        authorId: session.user.id,
         isDeleted: false,
       },
     });
@@ -41,13 +37,8 @@ export async function PUT(req:  Request,
 ) {
   const { blogId } = await params;
   try {
-    const token = req.headers.get('Authorization')?.split(' ')[1];
-    if (!token) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const verified = await verifyJWT(token);
-    if (!verified || verified.payload.role !== 'ADMIN') {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'ADMIN') {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -61,7 +52,7 @@ export async function PUT(req:  Request,
     const blog = await prisma.blog.findUnique({
       where: {
         id:blogId,
-        authorId: verified.payload.sub,
+        authorId: session.user.id,
         isDeleted: false,
       },
     });
@@ -96,20 +87,15 @@ export async function DELETE(req:  Request,
 ) {
   const { blogId } = await params;
   try {
-    const token = req.headers.get('Authorization')?.split(' ')[1];
-    if (!token) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const verified = await verifyJWT(token);
-    if (!verified || verified.payload.role !== 'ADMIN') {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'ADMIN') {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const blog = await prisma.blog.findUnique({
       where: {
         id: blogId,
-        authorId: verified.payload.id as string,
+        authorId: session.user.id,
         isDeleted: false,
       },
     });

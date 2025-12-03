@@ -9,7 +9,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/store/auth";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Image from "next/image";
 import {
@@ -32,7 +32,7 @@ export default function AuthorLoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { data: session, status } = useSession();
   
   const {
     register,
@@ -44,7 +44,7 @@ export default function AuthorLoginPage() {
 
   const onSubmit = async (data: z.infer<typeof authorLoginSchema>) => {
     setLoading(true);
-    
+
     try {
       const result = await signIn("author-credentials", {
         email: data.email,
@@ -56,13 +56,6 @@ export default function AuthorLoginPage() {
         toast.error(result.error || "Invalid credentials");
       } else if (result?.ok) {
         toast.success("Author login successful!");
-        
-        // Update auth store
-        const session = await fetch("/api/auth/session").then(r => r.json());
-        if (session?.user) {
-          setUser(session.user);
-        }
-        
         router.push("/author/dashboard");
       }
     } catch (error: any) {

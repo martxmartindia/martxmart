@@ -1,32 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
-import { cookies } from "next/headers";
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 // Define blog status type to match Prisma schema
 type BlogStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
 export async function POST(req: Request) {
   try {
-    const token = (await cookies()).get('token')?.value
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-    
-    const decoded = await verifyJWT(token)
-    
-    if (!decoded || !decoded.payload || (decoded.payload.role !== 'ADMIN' && decoded.payload.role !== 'AUTHOR')) {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'AUTHOR')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const userId = decoded.payload.id;
+    const userId = session.user.id;
     if (!userId) {
       return NextResponse.json({
         error: "Unauthorized: Missing user ID"
@@ -100,23 +91,15 @@ export async function POST(req: Request) {
 
 export async function GET(req: NextRequest) {
   try {
-    const token = (await cookies()).get('token')?.value;
+    const session = await getServerSession(authOptions);
 
-    if (!token) {
+    if (!session?.user || (session.user.role !== 'AUTHOR' && session.user.role !== 'ADMIN')) {
       return NextResponse.json({
         error: "Unauthorized"
       }, { status: 401 });
     }
 
-    const verified = await verifyJWT(token);
-
-    if (!verified || !verified.payload || (verified.payload.role !== 'AUTHOR' && verified.payload.role !== 'ADMIN')) {
-      return NextResponse.json({
-        error: "Unauthorized"
-      }, { status: 401 });
-    }
-
-    const userId = verified.payload.id;
+    const userId = session.user.id;
     if(!userId){
       return NextResponse.json({
         error: "Unauthorized: Missing user ID"

@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import AuthorSidebar from "@/components/author-sidebar"
-import { useAuthor } from '@/store/author';
 
 export default function AuthorLayout({
   children,
@@ -11,14 +11,16 @@ export default function AuthorLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuthor();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (status === 'loading') return; // Still loading
+
+    if (status === 'unauthenticated' || session?.user?.role !== 'AUTHOR') {
       router.push('/auth/author/login');
       return;
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [session, status, router]);
 
   return (
     <div className="h-full">
