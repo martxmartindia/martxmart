@@ -1,27 +1,19 @@
 import { NextResponse } from "next/server"
 import { prisma as db } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
+
+
 
 export async function GET(request: Request) {
   try {
         // Check authentication
-      const token = (await cookies()).get("token")?.value
-  
-      if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
-  
-      const decoded =await verifyJWT(token)
-  
-      if (!decoded || typeof decoded !== "object") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
-  
-      const userId = decoded.payload.id as string;
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     const addresses = await db.address.findMany({
       where: {
-        userId: userId,
+        userId: user.id,
       },
       orderBy: {
         createdAt: "desc",
@@ -38,19 +30,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
        // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded =await verifyJWT(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id as string;
+    }   
 
     const { type, contactName, phone, email, addressLine1, addressLine2, city, state, zip, isDefault } =
       await request.json()
@@ -59,7 +42,7 @@ export async function POST(request: Request) {
     if (isDefault) {
       await db.address.updateMany({
         where: {
-          userId: userId,
+          userId: user.id,
         },
         data: {
           // isDefault field removed because it does not exist in the Address model
@@ -69,7 +52,7 @@ export async function POST(request: Request) {
 
     const address = await db.address.create({
       data: {
-        userId:userId,
+        userId: user.id,
         type,
         contactName,
         phone,

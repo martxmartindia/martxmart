@@ -1,8 +1,6 @@
 import { NextResponse,NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
-import { cookies } from "next/headers";
-
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 export async function GET( request: NextRequest,
     { params }: { params: Promise<{ id: string }> },
   ) {
@@ -34,19 +32,12 @@ export async function POST(request: NextRequest,
   ) {
       try {
       const id = (await params).id;
-        const token = (await cookies()).get("token")?.value;
-      
-        if (!token) {
-          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-      
-        const decoded = await verifyJWT(token);
-      
-        if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-      
-        const userId = decoded.payload.id;
+      const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
+    const decoded = await getAuthenticatedUser();
+    if (!decoded) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
       
     const body = await request.json();
 
@@ -66,7 +57,7 @@ export async function POST(request: NextRequest,
     const application = await prisma.application.create({
       data: {
         careerId: id,
-        userId: userId as string,
+        userId: decoded.id,
         name: body.name,
         email: body.email,
         phone: body.phone,

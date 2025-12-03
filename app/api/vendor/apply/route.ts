@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/utils/auth';
-import { cookies } from 'next/headers';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 
 interface VerificationData {
   gstVerified: boolean;
@@ -30,19 +29,13 @@ const validateDocuments = (documents: any[]): documents is Document[] => {
 };
 
 export async function POST(request: NextRequest) {
-  const token = (await cookies()).get('token')?.value;
-  if (!token) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
-    const decoded = await verifyJWT(token);
-
-    if (!decoded || typeof decoded !== 'object' || decoded.payload.role !== 'CUSTOMER') {
+    // Authenticate user
+    const session = await getAuthenticatedUser();
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const userId = decoded.payload.userId;
+    const userId = session.id;
     const formData = await request.formData();
 
     // Extract form fields
@@ -200,17 +193,12 @@ export async function PUT( request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) { 
   const id = (await params).id;
-  const token = (await cookies()).get('token')?.value;
-  if (!token) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
-    const decoded = await verifyJWT(token);
-
-    if (!decoded || typeof decoded !== 'object' || decoded.payload.role !== 'ADMIN') {
+    // Authenticate user
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    } 
 
     const body = await request.json();
 

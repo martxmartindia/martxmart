@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
-import { verifyJWT } from '@/utils/auth';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth-helpers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -125,14 +124,12 @@ function transformProduct(product: any) {
 export async function POST(request: NextRequest) {
   try {
     // Check if user is admin
-    const token = (await cookies()).get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== 'object' || decoded.payload.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await getAuthenticatedUser();
+    if (!user ||  user.role !== 'ADMIN') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();

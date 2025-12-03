@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import {prisma} from "@/lib/prisma"
-import { cookies } from "next/headers"
-import {verifyJWT} from "@/utils/auth"
+ import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 
 export async function GET(request: NextRequest) {
@@ -43,17 +42,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = (await cookies()).get("token")?.value;
+    const authError = await requireAuth()
+    if (authError) return authError;
 
-    if (!token) {
+    const finduser = await getAuthenticatedUser()
+    if (!finduser ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded = await verifyJWT(token);
-    if(!decoded) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    const userId= decoded.payload.id;
+    const userId = finduser.id
     // Check if user is admin
     const user = await prisma.user.findUnique({
       where: { id:userId as string },

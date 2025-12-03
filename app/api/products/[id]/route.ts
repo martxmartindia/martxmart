@@ -1,10 +1,9 @@
 // app/api/products/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyJWT as verifyJwtToken } from "@/utils/auth";
 import { z } from "zod";
 import { DiscountType } from "@prisma/client";
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth-helpers';
 
 const updateProductSchema = z.object({
   name: z.string().min(2, "Product name must be at least 2 characters"),
@@ -161,13 +160,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   try {
     // Check if user is admin
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    const decoded = await verifyJwtToken(token);
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -242,13 +239,11 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const { id } = await params;
   try {
     // Check if user is admin
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    const decoded = await verifyJwtToken(token);
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

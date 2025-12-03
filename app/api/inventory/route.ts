@@ -1,23 +1,19 @@
 import { NextResponse } from "next/server"
 import { prisma as db } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
+
 // GET inventory items
 export async function GET(request: Request) {
   try {
- const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+ const auth=await requireAuth();
+    if (auth instanceof NextResponse) return  auth;
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    const userId=decoded.payload.userId
-    const role=decoded.payload.role
+    const userId = user.id;
+    const role = user.role;
 
     const { searchParams } = new URL(request.url)
     const franchiseId = searchParams.get("franchiseId")
@@ -121,21 +117,9 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { productId, franchiseId, quantity, minStock, location } = body
-
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId=decoded.payload.userId
-    const role=decoded.payload.role
+    const user = await getAuthenticatedUser()
+    const userId = user?.id
+    const role = user?.role
 
     // Validate required fields
     if (!productId || !franchiseId) {

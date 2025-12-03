@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
+
 
 export async function POST(req: Request) {
   try {
-    const cookieStore =await cookies();
-    const token = cookieStore.get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized - No token provided" }, { status: 401 })
+    const auth=await requireAuth();
+    if (auth instanceof NextResponse) return auth;
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token)
-    if (!decoded.payload || typeof decoded.payload.id !== 'string') {
-      return NextResponse.json({ error: "Invalid token payload" }, { status: 401 })
-    }
-    const userId = decoded.payload.id
+    const userId = user.id;
+   
     const data = await req.json()
-
-    // if (!data.type || !['BILLING', 'DISPATCH'].includes(data.type)) {
-    //   return NextResponse.json({ error: "Invalid address type. Must be either 'BILLING' or 'DISPATCH'" }, { status: 400 })
-    // }
 
     // Create shipping address
     const address = await prisma.address.create({
@@ -46,22 +40,19 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const cookieStore =await cookies();
-    const token = cookieStore.get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized - No token provided" }, { status: 401 })
+    const auth=await requireAuth();
+    if (auth instanceof NextResponse) return  auth;
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token)
-    if (!decoded.payload || typeof decoded.payload.id!=='string') {
-      return NextResponse.json({ error: "Invalid token payload" }, { status: 401 })
-    }
-    const userId = decoded.payload.id
+    const userId = user.id;
 
     // Fetch user addresses
     const addresses = await prisma.address.findMany({
       where: {
-        userId: userId as string,
+        userId: userId,
       },
     })
 

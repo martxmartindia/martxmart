@@ -1,28 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma as db } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
+
 
 // GET a specific promotion request
 export async function GET( request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    
+    const auth=await requireAuth();
+    if (auth instanceof NextResponse) return  auth;
+    const user = await getAuthenticatedUser();
+    const userId = user?.id;
+    const role = user?.role;
   const id = (await params).id;
     const promotionId =id
-const token = (await cookies()).get("token")?.value
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const user = await verifyJWT(token)
-    const userId = user?.payload?.id // Assuming user is an object with a payload property containing user information
-   const role = user?.payload?.role // Assuming user is an object with a payload property containing user information
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
 
     const promotion = await db.promotionRequest.findUnique({
       where: { id: promotionId },
@@ -74,16 +67,11 @@ export async function PATCH( request: NextRequest,
   const id = (await params).id;
     const promotionId = id
     const body = await request.json()
-
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const user = await verifyJWT(token)
-    const userId = user?.payload?.id // Assuming user is an object with a payload property containing user information
-    const role = user?.payload?.role // Assuming user is an object with a payload property containing user information
+    const auth=await requireAuth();
+    if (auth instanceof NextResponse) return  auth;
+    const user = await getAuthenticatedUser();
+    const userId = user?.id;
+    const role = user?.role;
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }

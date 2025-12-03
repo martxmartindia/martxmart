@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { z } from "zod";
 
 const addressSchema = z.object({
@@ -22,17 +21,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    const userId = user.id;
     const { id: addressId } = await params;
 
     // Check if address exists and belongs to user
@@ -111,17 +104,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    const session = await getAuthenticatedUser();
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    const userId = session.id;
     const { id: addressId } = await params;
 
     // Check if address exists and belongs to user
@@ -177,17 +165,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    const userId = user.id;
     const { id: addressId } = await params;
 
     const address = await prisma.address.findFirst({

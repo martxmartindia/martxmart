@@ -1,24 +1,17 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser } from "@/lib/auth-helpers"
 
 export async function GET() {
   try {
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Authenticate user
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== 'VENDOR') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    // Verify the token and extract the user ID
-    const decodedToken =await verifyJWT(token)
-
-    const userId= decodedToken.payload.userId
-
     // Get vendor profile
     const vendorProfile = await prisma.vendorProfile.findUnique({
-      where: { userId:userId as string },
+      where: { userId: user.id },
     })
 
     if (!vendorProfile) {
@@ -34,21 +27,16 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Authenticate user
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== 'VENDOR') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    // Verify the token and extract the user ID
-    const decodedToken =await verifyJWT(token)
-
-    const userId= decodedToken.payload.userId
     const data = await request.json()
 
     // Get vendor profile
     const existingProfile = await prisma.vendorProfile.findUnique({
-      where: { userId:userId as string },
+      where: { userId: user.id },
     })
 
     if (!existingProfile) {

@@ -1,7 +1,7 @@
 import { NextResponse,NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { requireAuth, getAuthenticatedUser } from "@/lib/auth-helpers";
+
 
 // Update cart item quantity
 export async function PUT(req: NextRequest,
@@ -10,16 +10,15 @@ export async function PUT(req: NextRequest,
   try {
     const itemId = (await params).itemId;
 
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
+
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userId = decoded.payload.id;
+    const userId = user.id;
 
     const { quantity } = await req.json();
     if (!quantity || quantity < 1) {
@@ -82,16 +81,15 @@ export async function DELETE(req: NextRequest,
 ) {
   try {
     const itemId = (await params).itemId;
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
+
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userId = decoded.payload.id;
+    const userId = user.id;
 
     const cartItem = await prisma.shoppingCartItem.findUnique({
       where: { id:itemId },

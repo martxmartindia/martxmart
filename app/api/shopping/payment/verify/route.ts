@@ -1,25 +1,17 @@
 import { NextResponse } from "next/server"
 import { prisma as db } from "@/lib/prisma"
 import crypto from "crypto"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
+
+
 
 export async function POST(request: Request) {
   try {
         // Check authentication
-      const token = (await cookies()).get("token")?.value
-  
-      if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
-  
-      const decoded =await verifyJWT(token)
-  
-      if (!decoded || typeof decoded !== "object") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
-  
-      const userId = decoded.payload.id as string;
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = await request.json()
 
     // Verify signature

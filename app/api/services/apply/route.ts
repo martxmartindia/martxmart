@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { GSTType } from "@prisma/client";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
@@ -39,15 +37,10 @@ export async function POST(request: Request) {
   } = body;
 
   try {
-    const token = (await cookies()).get("token")?.value
-    if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const decodedToken = await verifyJWT(token)
-    if (!decodedToken) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    const userId = decodedToken.payload.id
     
     const service = await prisma.service.findUnique({ where: { id: serviceId } });
     if (!service) {
@@ -57,7 +50,7 @@ export async function POST(request: Request) {
     const order = await prisma.serviceOrder.create({
       data: {
         serviceId,
-        userId: userId as string,
+        userId: user.id,
         amount: service.priceAmount,
         totalAmount: service.priceAmount,
         status: "PENDING",
@@ -86,7 +79,7 @@ export async function POST(request: Request) {
     const application = await prisma.serviceApplication.create({
       data: {
         serviceId,
-        userId: userId as string,
+        userId: user.id,
         serviceOrderId: order.id,
         serviceApplicationType,
         fullName,

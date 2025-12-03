@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+ import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
+
 
 const validStatuses = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
@@ -9,20 +9,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   try {
     // Check if user is authenticated
-    const token = (await cookies()).get("token")?.value;
+    const authError = await requireAuth();
+    if (authError) return authError;
 
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id;
-    const userRole = decoded.payload.role;
+    const userId = user.id;
+    const userRole = user.role;
 
     // Get order details
     const order = await prisma.order.findUnique({
@@ -77,18 +73,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   try {
     // Check if user is admin
-    const token = (await cookies()).get("token")?.value;
+    const authError = await requireAuth();
+    if (authError) return authError;
 
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-
-    if (!decoded || typeof decoded !== "object" || decoded.payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { status } = await req.json();
 
     if (!status || !validStatuses.includes(status)) {

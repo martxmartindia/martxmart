@@ -1,33 +1,18 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import {verifyJWT as verifyJwtToken } from "@/utils/auth"
 import { prisma } from "@/lib/prisma"
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 
 export async function GET(req: Request) {
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user || (user.role !== "VENDOR" && user.role !== "ADMIN")) { 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is a vendor or admin
-    if (decoded.payload.role !== "VENDOR" && decoded.payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
-    const userId = decoded.payload.id
 
     // Get vendor ID
     const vendor = await prisma.vendorProfile.findUnique({
-      where: { userId:userId as string },
+      where: { userId: user.id },
     })
 
     if (!vendor) {

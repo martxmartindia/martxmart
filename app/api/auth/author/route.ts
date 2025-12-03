@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { signJWT,verifyPassword } from '@/utils/auth';
-import { cookies } from 'next/headers';
+import { verifyPassword } from '@/lib/auth-utils';
+
 
 export async function POST(req: Request) {
   try {

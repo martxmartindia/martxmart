@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import {prisma} from "@/lib/prisma"
 import { cookies } from "next/headers"
-import {verifyJWT} from "@/utils/auth"
-
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -84,20 +83,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = (await cookies()).get("token")?.value
+   const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || decoded.role !== "AUTHOR") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const session = await verifyJWT(token)
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    const userId = session.payload.id as string
     // Check if user is author or admin
     const user = await prisma.user.findUnique({
-      where: { id:userId as string },
+      where: { id: decoded.id },
     })
 
     if (!user || (user.role !== "AUTHOR" && user.role !== "ADMIN")) {

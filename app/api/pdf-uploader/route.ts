@@ -1,29 +1,23 @@
 import { NextResponse } from 'next/server';
 import cloudinary from '@/utils/cloudinary';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/utils/auth';
-import { cookies } from 'next/headers';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth-helpers';
 
 export async function POST(req: Request) {
-  // Verify authentication
-  const token = (await cookies()).get('token')?.value;
-  if (!token) {
-    return NextResponse.json(
-      { success: false, message: 'Unauthorized' },
-      { status: 401 },
-    );
-  }
-
   try {
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== 'object' || decoded.payload.role !== 'CUSTOMER') {
+    // Verify authentication
+    const authError = await requireAuth();
+    if (authError) return authError;
+
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== 'CUSTOMER') {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
         { status: 401 },
       );
     }
 
-    const userId = decoded.payload.userId;
+    const userId = user.id;
     const formData = await req.formData();
     const file = formData.get('file');
     const documentType = formData.get('type') as string;

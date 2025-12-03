@@ -1,30 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies, headers } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
+
 
 export async function GET(request: Request) {
   // Try to get token from Authorization header first, then from cookies
-  const headersList = await headers();
-  const authHeader = headersList.get("authorization");
-  let token = authHeader?.replace("Bearer ", "");
-  
-  if (!token) {
-    token = (await cookies()).get("token")?.value;
-  }
-
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    const decoded = await verifyJWT(token);
+    const authResult = await requireAuth();
+    if (authResult instanceof NextResponse) return authResult;
 
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
+    const users = await getAuthenticatedUser();
+    if (!users) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = decoded.payload.id as string;
+    const userId = users.id;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
+
+
 import { z } from "zod";
 
 const addressSchema = z.object({
@@ -19,18 +20,12 @@ const addressSchema = z.object({
 // Get user addresses
 export async function GET() {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
-
+    const userId = user.id;
     const addresses = await prisma.address.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -64,17 +59,12 @@ export async function GET() {
 // Create new address
 export async function POST(req: Request) {
   try {
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
+    const userId = user.id;
 
     const body = await req.json();
     

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth-helpers';
+
 
 export async function GET(req: Request,  { params }: { params: Promise<{ id: string }> }) { 
   const { id} = await params 
@@ -32,23 +32,14 @@ export async function POST(req: Request,  { params }: { params: Promise<{ id: st
   const { id} = await params 
   try {
     // Check if user is authenticated
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
-    const decoded =await verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = decoded.payload.id as string
 
     const productId =id
     const { rating, comment } = await req.json()
-
+    const userId = user.id
     if (!rating || rating < 1 || rating > 5) {
       return NextResponse.json({ error: "Rating must be between 1 and 5" }, { status: 400 })
     }

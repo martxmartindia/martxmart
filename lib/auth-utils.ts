@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 export interface AuthUser {
@@ -12,19 +12,18 @@ export interface AuthUser {
 
 export async function requireCustomer(req: NextRequest): Promise<AuthUser | NextResponse> {
   try {
-    const token = req.headers.get("authorization")?.replace("Bearer ", "") || 
-                  req.cookies.get("token")?.value;
+    const user = await getAuthenticatedUser();
 
-    if (!token) {
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    const decoded = await verifyJWT(token);
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.payload.sub as string },
+    // Fetch additional user data from DB for verification
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
       select: {
         id: true,
         email: true,
@@ -36,21 +35,21 @@ export async function requireCustomer(req: NextRequest): Promise<AuthUser | Next
       },
     });
 
-    if (!user || user.isDeleted) {
+    if (!dbUser || dbUser.isDeleted) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
       );
     }
 
-    if (user.role !== "CUSTOMER") {
+    if (dbUser.role !== "CUSTOMER") {
       return NextResponse.json(
         { error: "Access denied. Customer role required." },
         { status: 403 }
       );
     }
 
-    if (!user.isVerified) {
+    if (!dbUser.isVerified) {
       return NextResponse.json(
         { error: "Account not verified" },
         { status: 403 }
@@ -58,15 +57,15 @@ export async function requireCustomer(req: NextRequest): Promise<AuthUser | Next
     }
 
     return {
-      id: user.id,
-      email: user.email || undefined,
-      phone: user.phone || undefined,
-      name: user.name,
-      role: user.role,
+      id: dbUser.id,
+      email: dbUser.email || undefined,
+      phone: dbUser.phone || undefined,
+      name: dbUser.name,
+      role: dbUser.role,
     };
   } catch (error) {
     return NextResponse.json(
-      { error: "Invalid token" },
+      { error: "Authentication error" },
       { status: 401 }
     );
   }
@@ -74,16 +73,15 @@ export async function requireCustomer(req: NextRequest): Promise<AuthUser | Next
 
 export async function getUserWithDb(req: NextRequest): Promise<AuthUser | null> {
   try {
-    const token = req.headers.get("authorization")?.replace("Bearer ", "") || 
-                  req.cookies.get("token")?.value;
+    const user = await getAuthenticatedUser();
 
-    if (!token) {
+    if (!user) {
       return null;
     }
 
-    const decoded = await verifyJWT(token);
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.payload.sub as string },
+    // Fetch additional user data from DB
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
       select: {
         id: true,
         email: true,
@@ -95,16 +93,16 @@ export async function getUserWithDb(req: NextRequest): Promise<AuthUser | null> 
       },
     });
 
-    if (!user || user.isDeleted) {
+    if (!dbUser || dbUser.isDeleted) {
       return null;
     }
 
     return {
-      id: user.id,
-      email: user.email || undefined,
-      phone: user.phone || undefined,
-      name: user.name,
-      role: user.role,
+      id: dbUser.id,
+      email: dbUser.email || undefined,
+      phone: dbUser.phone || undefined,
+      name: dbUser.name,
+      role: dbUser.role,
     };
   } catch (error) {
     return null;

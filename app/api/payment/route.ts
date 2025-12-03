@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import Razorpay from "razorpay";
-import { cookies } from "next/headers";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
@@ -11,21 +10,12 @@ const razorpay = new Razorpay({
 
 export async function POST(request: Request) {
   try {
-    // Check authentication
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+    const users = await getAuthenticatedUser();
+    if (!users) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded || typeof decoded !== "object" || !decoded.payload?.id) {
-      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id as string;
-
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: users.id },
     });
 
     // Parse request body
@@ -46,7 +36,7 @@ export async function POST(request: Request) {
     const order = await prisma.order.findUnique({
       where: { 
         id: orderId,
-        userId,
+        userId: users.id,
         status: "PENDING",
       },
       include: { 

@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
 import { Role, OrderStatus } from "@/types";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status") || "all";
     const timeRange = searchParams.get("timeRange") || "week";
-
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token)
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const user = await verifyJWT(token);
-    if (!user || user.payload.role !== Role.VENDOR) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    // Authenticate user
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== 'VENDOR') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const vendorId = user.payload.id;
     const vendorProfile = await prisma.vendorProfile.findUnique({
-      where: { userId: vendorId as string },
+      where: { userId: user.id },
     });
 
     if (!vendorProfile) {
@@ -77,18 +71,13 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token)
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const user = await verifyJWT(token);
-    if (!user || user.payload.role !== Role.VENDOR) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
-    const vendorId = user.payload.id;
+    // Authenticate user
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== 'VENDOR') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }   
     const vendorProfile = await prisma.vendorProfile.findUnique({
-      where: { userId: vendorId as string },
+      where: { userId: user.id },
     });
 
     if (!vendorProfile) {

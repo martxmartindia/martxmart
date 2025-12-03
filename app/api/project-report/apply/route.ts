@@ -2,9 +2,9 @@
 import { NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
-import { verifyJWT } from '@/utils/auth';
-import { cookies } from 'next/headers';
+import { getAuthenticatedUser, requireAuth } from '@/lib/auth-helpers';
+import Prisma from '@prisma/client';
+
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -19,18 +19,14 @@ interface JWTPayload {
 
 export async function POST(request: Request) {
   try {
-    // Verify JWT
-    const token = (await cookies()).get('token')?.value;
-    if (!token) {
+    // Authenticate user
+    const userAuth = await requireAuth();
+    if (userAuth instanceof NextResponse) return userAuth;
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
-
-    const decoded = await verifyJWT(token);
-    if (!decoded?.payload || !decoded.payload.id) {
-      return NextResponse.json({ success: false, message: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id;
+    const userId = user.id;
 
     const formData = await request.formData();
 

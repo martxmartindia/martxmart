@@ -1,26 +1,17 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
+
 
 export async function GET(req: Request) {
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
+    const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is an author or admin
-    if ((await decoded).payload.role !== "AUTHOR" && (await decoded).payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || decoded.role !== "AUTHOR") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get query parameters
@@ -35,7 +26,7 @@ export async function GET(req: Request) {
     // Build filter conditions
     const where: any = {
       isDeleted: false,
-      authorId: (await decoded).payload.id,
+      authorId: decoded.id,
     }
 
     if (status) {
@@ -90,24 +81,15 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
+       const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || decoded.role !== "AUTHOR") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is an author or admin
-    if ((await decoded).payload.role !== "AUTHOR" && (await decoded).payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
-    const userId = (await decoded).payload.id
+    
+    const userId = decoded.id
 
     // Get request body
     const data = await req.json()
@@ -153,24 +135,15 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
+      const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || (decoded.role !== "AUTHOR" && decoded.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is an author or admin
-    if ((await decoded).payload.role !== "AUTHOR" && (await decoded).payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
-    const userId = (await decoded).payload.id
+    const userId = decoded.id
 
     // Get request body
     const data = await req.json()
@@ -235,24 +208,16 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     // Check authentication
-    const token = (await cookies()).get("token")?.value
+      const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || (decoded.role !== "AUTHOR" && decoded.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = verifyJwtToken(token)
 
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check if user is an author or admin
-    if ((await decoded).payload.role !== "AUTHOR" && (await decoded).payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
-    const userId = (await decoded).payload.id
+    const userId = decoded.id
 
     // Get blog ID from URL
     const { searchParams } = new URL(req.url)

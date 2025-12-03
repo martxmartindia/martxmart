@@ -1,21 +1,18 @@
 import { NextResponse } from "next/server"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers"
 import { prisma as db } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
 // GET promotion requests
 export async function GET(request: Request) {
   try {
-    const token=(await cookies()).get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth=await requireAuth();
+    if (auth instanceof NextResponse) return  auth;
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await verifyJWT(token)
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    const userId = user.payload.id
-    const role=user.payload.role
+    const userId = user.id;
+    const role = user.role;
 
     const { searchParams } = new URL(request.url)
     const franchiseId = searchParams.get("franchiseId")
@@ -114,18 +111,16 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { title, description, type, materials, notes, franchiseId } = body
-
-    const token=(await cookies()).get("token")?.value
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const user = await verifyJWT(token)
-    const userId = user.payload.id
-    const role=user.payload.role
+    // Authenticate user
+    const auth=await requireAuth();
+    if (auth instanceof NextResponse) return  auth;
+    const user = await getAuthenticatedUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const userId = user.id;
+    const role = user.role;
 
     // Validate required fields
     if (!title || !description || !type || !franchiseId) {
@@ -172,7 +167,7 @@ export async function POST(request: Request) {
     await db.notification.create({
       data: {
         title: "New Promotion Request",
-        message: `A new promotion request "${title}" has been submitted by ${user.payload.name}.`,
+        message: `A new promotion request "${title}" has been submitted by ${user.name}.`,
         type: "PROMOTION",
         userId: userId as string,
         franchiseId,

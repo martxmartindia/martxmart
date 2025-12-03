@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyJWT } from "@/utils/auth";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 import { Role } from "@/types";
 
 export async function POST(req: Request) {
   try {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const authError = await requireAuth();
+    if (authError) return authError;
 
-    const user = await verifyJWT(token);
-    if (!user || user.payload.role !== Role.VENDOR) {
+    const user = await getAuthenticatedUser();
+    if (!user || user.role !== Role.VENDOR) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const vendorId = user.payload.id;
+    const vendorId = user.id;
     const vendorProfile = await prisma.vendorProfile.findUnique({
       where: { userId: vendorId as string },
     });

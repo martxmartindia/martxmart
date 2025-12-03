@@ -1,7 +1,7 @@
 import { NextResponse,NextRequest } from "next/server"
 import { prisma as db } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
+
 
 export async function GET(req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -9,19 +9,11 @@ export async function GET(req: NextRequest,
   try {
     const id = (await params).id;
         // Check authentication
-      const token = (await cookies()).get("token")?.value
-  
-      if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
-  
-      const decoded =await verifyJWT(token)
-  
-      if (!decoded || typeof decoded !== "object" || !decoded.payload.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
-  
-      const userId = decoded.payload.id as string;
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = user.id;
     const order = await db.order.findFirst({
       where: {
         id: id,

@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT } from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 export async function PUT(
   request: NextRequest,
@@ -9,18 +8,14 @@ export async function PUT(
 ) {
   try {
     const id = (await params).id
-    const token = (await cookies()).get("token")?.value
+   const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const session = await verifyJWT(token)
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = session.payload.id as string
     const data = await request.json()
 
     // Get the comment to check ownership
@@ -34,10 +29,10 @@ export async function PUT(
 
     // Check if user owns the comment or is admin
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: decoded.id },
     })
 
-    if (!user || (user.role !== "ADMIN" && comment.userId !== userId)) {
+    if (!user || (user.role !== "ADMIN" && comment.userId !== user.id)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
@@ -71,18 +66,14 @@ export async function DELETE(
 ) {
   try {
     const id = (await params).id
-    const token = (await cookies()).get("token")?.value
+   const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const session = await verifyJWT(token)
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const userId = session.payload.id as string
 
     // Get the comment to check ownership
     const comment = await prisma.blogComment.findUnique({
@@ -95,10 +86,10 @@ export async function DELETE(
 
     // Check if user owns the comment or is admin
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: decoded.id },
     })
 
-    if (!user || (user.role !== "ADMIN" && comment.userId !== userId)) {
+    if (!user || (user.role !== "ADMIN" && comment.userId !== decoded.id)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 

@@ -1,27 +1,17 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import { verifyJWT as verifyJwtToken } from "@/utils/auth"
+import { getAuthenticatedUser } from "@/lib/auth-helpers"
 
 export async function DELETE(req: Request,  { params }: { params: Promise<{ id: string }> }) { 
   const { id} = await params 
   try {
     // Check if user is authenticated
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
+    const user = await getAuthenticatedUser()
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded = verifyJwtToken(token)
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // @ts-expect-error - JWT payload type is dynamic
-    const userId = decoded.id
-
+    const userId = user.id
     const wishlistItemId =id
 
     // Check if wishlist item exists and belongs to user

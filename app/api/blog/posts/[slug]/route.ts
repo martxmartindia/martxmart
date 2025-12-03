@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyJWT as verifyJwtToken } from "@/utils/auth";
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
 
 export async function GET(
   request: NextRequest,
@@ -100,19 +99,13 @@ export async function PUT(
 ) {
   try {
     const slug = (await params).slug;
-    const token = (await cookies()).get("token")?.value;
+   const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || decoded.role !== "AUTHOR") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJwtToken(token);
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id;
     const data = await request.json();
 
     // Get the post to check ownership
@@ -130,10 +123,10 @@ export async function PUT(
 
     // Check if user is the author or an admin
     const user = await prisma.user.findUnique({
-      where: { id: userId as string },
+      where: { id: decoded.id },
     });
 
-    if (!user || (user.role !== "ADMIN" && post.authorId !== userId)) {
+    if (!user || (user.role !== "ADMIN" && post.authorId !== decoded.id)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
     // Update the post
@@ -168,18 +161,13 @@ export async function DELETE( request: NextRequest,
   try {
     
   const slug = (await params).slug;
-    const token = (await cookies()).get("token")?.value;
-    if (!token) {
+        const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
+
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || decoded.role !== "AUTHOR") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decoded = await verifyJwtToken(token);
-
-    if (!decoded || typeof decoded !== "object") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = decoded.payload.id;
     // Get the post to check ownership
     const post = await prisma.blog.findUnique({
       where: { slug },

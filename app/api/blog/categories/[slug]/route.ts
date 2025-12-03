@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { cookies } from "next/headers"
-import {verifyJWT} from "@/utils/auth"
+import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
+
 
 export async function GET( request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
@@ -53,22 +53,18 @@ export async function PUT( request: NextRequest,
   try {
     
   const slug = (await params).slug;
+   const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    const token = (await cookies()).get("token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || (decoded.role !== "AUTHOR" && decoded.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const decode = await verifyJWT(token)
-
-    if (!decode) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  
 
     // Check if user is admin
     const user = await prisma.user.findUnique({
-      where: { id: decode.payload.id as string },
+      where: { id: decoded.id as string },
     })
 
     if (!user || user.role !== "ADMIN") {
@@ -118,21 +114,17 @@ export async function DELETE( request: NextRequest,
   try {
     
   const slug = (await params).slug;
-    const token = (await cookies()).get("token")?.value
+       const result = await requireAuth();
+    if (result instanceof NextResponse) return result;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = await getAuthenticatedUser();
+    if (!decoded || (decoded.role !== "AUTHOR" && decoded.role !== "ADMIN")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decode = await verifyJWT(token)
-
-    if (!decode) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    const userId=decode.payload.id
     // Check if user is admin
     const user = await prisma.user.findUnique({
-      where: { id: userId as string  },
+      where: { id: decoded.id as string  },
     })
 
     if (!user || user.role !== "ADMIN") {
