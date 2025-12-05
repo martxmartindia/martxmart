@@ -98,14 +98,26 @@ export async function GET(request: NextRequest) {
       prisma.order.count({ where }),
     ]);
 
-    return NextResponse.json({
-      orders,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
+    // Format orders for frontend
+    const formattedOrders = orders.map(order => ({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      customer: {
+        id: order.user.id,
+        name: order.user.name,
+        email: order.user.email,
+        phone: order.user.phone,
       },
+      status: order.status.toLowerCase(),
+      totalAmount: Number(order.totalAmount),
+      itemCount: order.items.length + order.shoppingItems.length,
+      createdAt: order.createdAt.toISOString(),
+      updatedAt: order.updatedAt.toISOString(),
+    }));
+
+    return NextResponse.json({
+      orders: formattedOrders,
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
     console.error("Franchise orders error:", error);

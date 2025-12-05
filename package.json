@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "seed": "npx tsx prisma/seed.ts",
     "init-elasticsearch": "npx tsx scripts/init-elasticsearch.ts",
     "create-admin": "npx tsx scripts/create-admin.ts"
   },

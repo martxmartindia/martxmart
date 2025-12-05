@@ -16,6 +16,10 @@ import { TicketSystem } from "@/components/franchise/ticket-system"
 import { PromotionManagement } from "@/components/franchise/promotion-management"
 import { PaymentManagement } from "@/components/franchise/payment-management"
 import { StaffManagement } from "@/components/franchise/staff-management"
+import { TerritoryManagement } from "@/components/franchise/territory-management"
+import { DocumentManagement } from "@/components/franchise/document-management"
+import { FranchisePaymentsManagement } from "@/components/franchise/franchise-payments-management"
+import { PromotionRequestsManagement } from "@/components/franchise/promotion-requests-management"
 
 interface DashboardData {
   totalSales: number
@@ -129,6 +133,30 @@ export default function DashboardPage() {
                 className="rounded-none border-b-2 border-b-transparent px-4 py-3 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
               >
                 Staff
+              </TabsTrigger>
+              <TabsTrigger
+                value="territories"
+                className="rounded-none border-b-2 border-b-transparent px-4 py-3 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
+              >
+                Territories
+              </TabsTrigger>
+              <TabsTrigger
+                value="documents"
+                className="rounded-none border-b-2 border-b-transparent px-4 py-3 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
+              >
+                Documents
+              </TabsTrigger>
+              <TabsTrigger
+                value="franchise-payments"
+                className="rounded-none border-b-2 border-b-transparent px-4 py-3 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
+              >
+                Franchise Payments
+              </TabsTrigger>
+              <TabsTrigger
+                value="promotion-requests"
+                className="rounded-none border-b-2 border-b-transparent px-4 py-3 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
+              >
+                Promotion Requests
               </TabsTrigger>
             </TabsList>
           </CardContent>
@@ -383,6 +411,22 @@ export default function DashboardPage() {
 
         <TabsContent value="staff" className="space-y-4">
           <StaffManagement />
+        </TabsContent>
+
+        <TabsContent value="territories" className="space-y-4">
+          <TerritoryManagement />
+        </TabsContent>
+
+        <TabsContent value="documents" className="space-y-4">
+          <DocumentManagement />
+        </TabsContent>
+
+        <TabsContent value="franchise-payments" className="space-y-4">
+          <FranchisePaymentsManagement />
+        </TabsContent>
+
+        <TabsContent value="promotion-requests" className="space-y-4">
+          <PromotionRequestsManagement />
         </TabsContent>
       </Tabs>
     </div>

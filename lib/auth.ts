@@ -507,19 +507,46 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
+        console.log("🔍 [Franchise Provider] franchise-credentials called:", {
+          hasEmail: !!credentials?.email,
+          hasPassword: !!credentials?.password,
+          email: credentials?.email
+        });
+
         if (!credentials?.email || !credentials?.password) {
+          console.error("❌ [Franchise Provider] Missing email or password");
           return null;
         }
 
         try {
+          console.log("🔍 [Franchise Provider] Looking for franchise user with email:", credentials.email.toLowerCase());
+
           // Find franchise user
           const user = await prisma.user.findUnique({
             where: { email: credentials.email.toLowerCase() },
           });
 
-          if (!user || user.role !== "FRANCHISE" || !user.password) {
+          if (!user) {
+            console.error("❌ [Franchise Provider] No user found with email:", credentials.email.toLowerCase());
             return null;
           }
+
+          if (user.role !== "FRANCHISE") {
+            console.error("❌ [Franchise Provider] User found but not FRANCHISE role:", user.role);
+            return null;
+          }
+
+          if (!user.password) {
+            console.error("❌ [Franchise Provider] User found but no password set");
+            return null;
+          }
+
+          console.log("🔍 [Franchise Provider] User found:", {
+            id: user.id,
+            name: user.name,
+            role: user.role,
+            hasPassword: !!user.password
+          });
 
           // Verify password
           const isValidPassword = await verifyPassword(
@@ -527,11 +554,14 @@ export const authOptions: NextAuthOptions = {
             user.password
           );
 
+          console.log("🔍 [Franchise Provider] Password verification:", { isValidPassword });
+
           if (!isValidPassword) {
+            console.error("❌ [Franchise Provider] Invalid password for user:", credentials.email.toLowerCase());
             return null;
           }
 
-          return {
+          const result = {
             id: user.id,
             name: user.name,
             email: user.email,
@@ -539,8 +569,16 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             image: user.image,
           };
+
+          console.log("✅ [Franchise Provider] Authentication successful:", {
+            id: result.id,
+            role: result.role,
+            email: result.email
+          });
+
+          return result;
         } catch (error) {
-          console.error("Franchise credentials authorization error:", error);
+          console.error("❌ [Franchise Provider] Exception in franchise-credentials:", error);
           return null;
         }
       },

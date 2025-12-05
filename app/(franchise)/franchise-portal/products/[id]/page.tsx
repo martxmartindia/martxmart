@@ -287,6 +287,8 @@ export default function ProductDetailPage() {
                         <Image
                           src={image || "/placeholder.svg?height=200&width=200"}
                           alt={`${product.name} - Image ${index + 1}`}
+                          height={200}
+                          width={200}
                           className="w-full h-full object-cover"
                         />
                       </div>

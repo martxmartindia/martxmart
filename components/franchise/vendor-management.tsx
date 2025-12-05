@@ -104,7 +104,7 @@ export function VendorManagement() {
   const fetchVendors = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch("/api/vendors")
+      const response = await fetch("/api/franchise-portal/vendors")
       if (!response.ok) {
         throw new Error("Failed to fetch vendors")
       }
@@ -121,12 +121,9 @@ export function VendorManagement() {
   const fetchServices = async () => {
     setIsLoadingServices(true)
     try {
-      const response = await fetch("/api/services")
-      if (!response.ok) {
-        throw new Error("Failed to fetch services")
-      }
-      const data = await response.json()
-      setServices(data.services)
+      // For franchise portal, services are not implemented yet
+      // This would need a proper Service model linked to vendors
+      setServices([])
     } catch (error) {
       console.error("Error fetching services:", error)
       toast.error("Failed to load services. Please try again.")
@@ -139,7 +136,7 @@ export function VendorManagement() {
     e.preventDefault()
 
     try {
-      const response = await fetch("/api/vendors", {
+      const response = await fetch("/api/franchise-portal/vendors", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -182,39 +179,18 @@ export function VendorManagement() {
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    try {
-      const response = await fetch("/api/services", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(serviceFormData),
-      })
+    // For now, services are not implemented in franchise portal
+    toast.info("Service management will be available in a future update.")
 
-      if (!response.ok) {
-        throw new Error("Failed to create service")
-      }
-
-      const data = await response.json()
-
-      // Add the new service to the list
-      setServices([data.service, ...services])
-
-      // Reset form and close dialog
-      setServiceFormData({
-        name: "",
-        description: "",
-        price: "",
-        category: "",
-        vendorId: "",
-      })
-      setOpenNewService(false)
-
-      toast.success("The service has been added successfully.")
-    } catch (error) {
-      console.error("Error adding service:", error)
-      toast.error("Failed to add service. Please try again.")
-    }
+    // Reset form and close dialog
+    setServiceFormData({
+      name: "",
+      description: "",
+      price: "",
+      category: "",
+      vendorId: "",
+    })
+    setOpenNewService(false)
   }
 
   const handleStatusChange = async (vendorId: string, newStatus: "APPROVED" | "REJECTED" | "SUSPENDED") => {
@@ -246,31 +222,8 @@ export function VendorManagement() {
   }
 
   const handleServiceStatusChange = async (serviceId: string, isActive: boolean) => {
-    try {
-      const response = await fetch(`/api/services/${serviceId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          isActive,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to update service status")
-      }
-
-      const data = await response.json()
-
-      // Update the service in the list
-      setServices(services.map((service) => (service.id === serviceId ? data.service : service)))
-
-      toast.success(`Service has been ${isActive ? "activated" : "deactivated"}.`)
-    } catch (error) {
-      console.error("Error updating service status:", error)
-      toast.error("Failed to update service status. Please try again.")
-    }
+    // For now, services are not implemented in franchise portal
+    toast.info("Service management will be available in a future update.")
   }
 
   const getStatusBadge = (status: string) => {
@@ -488,14 +441,14 @@ export function VendorManagement() {
                                 <SelectValue placeholder="Select vendor" />
                               </SelectTrigger>
                               <SelectContent>
-                                {vendors
-                                  .filter((vendor) => vendor.status === "APPROVED")
-                                  .map((vendor) => (
-                                    <SelectItem key={vendor.id} value={vendor.id}>
-                                      {vendor.businessName}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
+                                  {vendors
+                                    .filter((vendor) => vendor.status === "APPROVED")
+                                    .map((vendor) => (
+                                      <SelectItem key={vendor.id} value={vendor.id}>
+                                        {vendor.businessName || vendor.user?.name || 'Unknown Vendor'}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
                             </Select>
                           </div>
                           <div className="grid grid-cols-4 items-center gap-4">
@@ -704,7 +657,7 @@ export function VendorManagement() {
                                 {service.description}
                               </div>
                             </TableCell>
-                            <TableCell>{service.vendor.businessName}</TableCell>
+                            <TableCell>{service.vendor?.businessName || 'Unknown Vendor'}</TableCell>
                             <TableCell>{service.category}</TableCell>
                             <TableCell>₹{service.price.toLocaleString()}</TableCell>
                             <TableCell>

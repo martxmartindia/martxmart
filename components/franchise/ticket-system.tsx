@@ -94,7 +94,7 @@ export function TicketSystem() {
   const fetchTickets = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch("/api/tickets")
+      const response = await fetch("/api/franchise-portal/tickets")
       if (!response.ok) {
         throw new Error("Failed to fetch tickets")
       }
@@ -110,7 +110,7 @@ export function TicketSystem() {
 
   const fetchTicketDetails = async (ticketId: string) => {
     try {
-      const response = await fetch(`/api/tickets/${ticketId}`)
+      const response = await fetch(`/api/franchise-portal/tickets/${ticketId}`)
       if (!response.ok) {
         throw new Error("Failed to fetch ticket details")
       }
@@ -126,7 +126,7 @@ export function TicketSystem() {
     e.preventDefault()
 
     try {
-      const response = await fetch("/api/tickets", {
+      const response = await fetch("/api/franchise-portal/tickets", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -163,7 +163,7 @@ export function TicketSystem() {
     if (!commentText.trim() || !selectedTicket) return
 
     try {
-      const response = await fetch(`/api/tickets/${selectedTicket.id}/comments`, {
+      const response = await fetch(`/api/franchise-portal/tickets/${selectedTicket.id}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +194,7 @@ export function TicketSystem() {
 
   const handleUpdateTicketStatus = async (ticketId: string, status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED") => {
     try {
-      const response = await fetch(`/api/tickets/${ticketId}`, {
+      const response = await fetch(`/api/franchise-portal/tickets/${ticketId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

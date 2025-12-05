@@ -75,7 +75,7 @@ export function MessagingSystem() {
   const fetchContacts = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch("/api/messages")
+      const response = await fetch("/api/franchise-portal/messages")
       if (!response.ok) {
         throw new Error("Failed to fetch contacts")
       }
@@ -92,7 +92,7 @@ export function MessagingSystem() {
   const fetchMessages = async (contactId: string) => {
     setIsLoadingMessages(true)
     try {
-      const response = await fetch(`/api/messages?contactId=${contactId}`)
+      const response = await fetch(`/api/franchise-portal/messages?contactId=${contactId}`)
       if (!response.ok) {
         throw new Error("Failed to fetch messages")
       }
@@ -115,7 +115,7 @@ export function MessagingSystem() {
     if (!messageText.trim() || !selectedContact) return
 
     try {
-      const response = await fetch("/api/messages", {
+      const response = await fetch("/api/franchise-portal/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

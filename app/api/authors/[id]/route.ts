@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+ request: NextRequest,
+   { params }: { params: Promise<{ id: string }> }
+ ) {
   try {
-    const authorId = params.id;
+    const {id: authorId} = await params;
 
     const author = await prisma.author.findUnique({
       where: {

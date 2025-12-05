@@ -20,7 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Mail, ArrowLeft, Eye, EyeOff, Loader2, Store } from "lucide-react";
+import { Mail, ArrowLeft, Eye, EyeOff, Loader2,Store } from "lucide-react";
 import { motion } from "framer-motion";
 
 const franchiseLoginSchema = z.object({
@@ -94,11 +94,7 @@ export default function FranchiseLoginPage() {
                 className="w-20 h-20 object-contain"
               />
             </Link>
-            <div className="flex justify-center mb-4">
-              <div className="bg-purple-100 p-3 rounded-full">
-                <Store className="w-8 h-8 text-purple-600" />
-              </div>
-            </div>
+
             <CardTitle className="text-3xl font-bold text-gray-900">
               Franchise Login
             </CardTitle>
