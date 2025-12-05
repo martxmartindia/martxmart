@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { signOut, useSession } from "next-auth/react"
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -35,14 +36,10 @@ import { Separator } from "@/components/ui/separator"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-
-const user = {
-  name: "John Doe",
-email: "support@martxmart.com",
-}
 export function FranchiseSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { data: session } = useSession()
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
     inventory: true,
     reports: true,
@@ -50,16 +47,8 @@ export function FranchiseSidebar() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/auth/logout", {
-        method: "POST",
-      })
-
-      if (res.ok) {
-        toast.success("Logout successful")
-        router.push("/auth/login")
-      } else {
-        throw new Error("Logout failed")
-      }
+      await signOut({ callbackUrl: "/auth/franchise/login" })
+      toast.success("Logout successful")
     } catch (error) {
       console.error("Logout error:", error)
       toast.error("Logout failed")
@@ -248,12 +237,12 @@ export function FranchiseSidebar() {
         <div className="px-2 py-2">
           <div className="flex items-center gap-3 rounded-md border p-2">
             <Avatar>
-              <AvatarImage src="/franchise-avatar.jpg" alt={user.name} />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              <AvatarImage src={session?.user?.image || "/franchise-avatar.jpg"} alt={session?.user?.name || "Franchise User"} />
+              <AvatarFallback>{session?.user?.name?.charAt(0) || "F"}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="font-medium">{user.name}</span>
-              <span className="text-xs text-gray-500">{user.email}</span>
+              <span className="font-medium">{session?.user?.name || "Franchise User"}</span>
+              <span className="text-xs text-gray-500">{session?.user?.email || "franchise@martxmart.com"}</span>
             </div>
             <Button variant="ghost" size="icon" className="ml-auto" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />

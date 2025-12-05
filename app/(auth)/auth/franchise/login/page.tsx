@@ -56,14 +56,7 @@ export default function FranchiseLoginPage() {
         toast.error(result.error || "Invalid credentials");
       } else if (result?.ok) {
         toast.success("Franchise login successful!");
-        
-        // Update auth store
-        const session = await fetch("/api/auth/session").then(r => r.json());
-        if (session?.user) {
-          setUser(session.user);
-        }
-        
-        router.push("/franchise/portal/dashboard");
+        router.push("/franchise-portal");
       }
     } catch (error: any) {
       toast.error("Login failed. Please try again.");
