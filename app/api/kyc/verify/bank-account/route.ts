@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server"
 import axios from "axios"
-import { validateIFSC, validateAccountNumber, getSandboxHeaders } from "@/utils/auth"
-const BASE_URL=process.env.SANDBOX_BASE_URL!
+import { validateIFSC, validateAccountNumber, getSandboxAccessToken, getSandboxAPIHeaders } from "@/utils/auth"
 
 export async function POST(request: Request) {
   try {
-    const { ifsc, account_number } = await request.json()    
+    const BASE_URL = process.env.SANDBOX_BASE_URL!
+    const { ifsc, account_number } = await request.json()
 
     if (!ifsc || !account_number) {
       return NextResponse.json(
@@ -25,27 +25,19 @@ export async function POST(request: Request) {
     }
 
     try {
-      // Use the Sandbox.co.in API for bank account verification
-      const response = await axios.post(
-        `${BASE_URL}/api/verify/ban`,
+      // Get access token
+      const accessToken = await getSandboxAccessToken()
+
+      // Use the Sandbox.co.in API for bank account verification (Penny-Less)
+      const response = await axios.get(
+        `${BASE_URL}/bank/${ifsc}/accounts/${account_number}/penniless-verify`,
         {
-         ifsc: ifsc,
-         accountNumber: account_number, 
+          headers: getSandboxAPIHeaders(accessToken),
         },
-        {
-          headers: getSandboxHeaders(),
-        },
-        
       )
 
       // Process the response data
-      const bankData = {
-        account_exists: response.data.account_exists || false,
-        name_at_bank: response.data.name_at_bank || "Account Holder",
-        bank_name: response.data.bank_name || "",
-        branch: response.data.branch || "",
-        message: response.data.message || "Bank account details verified successfully",
-      }
+      const bankData = response.data.data || response.data
 
       if (!bankData.account_exists) {
         return NextResponse.json(

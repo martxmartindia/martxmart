@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server"
 import axios from "axios"
-import { validateGST, getSandboxHeaders } from "@/utils/auth"
+import { validateGST, getSandboxAccessToken, getSandboxAPIHeaders } from "@/utils/auth"
 
-const headers=getSandboxHeaders()
 export async function POST(request: Request) {
   try {
-    const BASE_URL=process.env.SANDBOX_BASE_URL!    
+    const BASE_URL = process.env.SANDBOX_BASE_URL!
     const { gstin } = await request.json()
 
     if (!gstin) {
@@ -18,15 +17,17 @@ export async function POST(request: Request) {
     }
 
     try {
+      // Get access token
+      const accessToken = await getSandboxAccessToken()
+
       // Use the Sandbox.co.in API for GST verification
       const response = await axios.post(
-        `${BASE_URL}/api/verify/gst`,
+        `${BASE_URL}/gst/compliance/public/gstin/search`,
         { gstin },
         {
-          headers: getSandboxHeaders(),
+          headers: getSandboxAPIHeaders(accessToken),
         },
       )
-
 
       // Process the response data to extract relevant information
       const gstData = response.data
@@ -35,9 +36,9 @@ export async function POST(request: Request) {
     } catch (apiError: any) {
       console.error("Sandbox API error:", apiError.response?.data || apiError.message)
 
-      return NextResponse.json({ 
-        success: false, 
-        message: "GST verification failed. Please check the GST number and try again." 
+      return NextResponse.json({
+        success: false,
+        message: "GST verification failed. Please check the GST number and try again."
       }, { status: 400 })
     }
   } catch (error) {

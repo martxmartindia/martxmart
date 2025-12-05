@@ -33,6 +33,44 @@ export function getSandboxHeaders() {
   };
 }
 
+// Get Sandbox Access Token
+export async function getSandboxAccessToken(): Promise<string> {
+  const axios = (await import('axios')).default;
+  const BASE_URL = process.env.SANDBOX_BASE_URL;
+
+  if (!BASE_URL) {
+    throw new Error('Sandbox base URL not configured');
+  }
+
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/authenticate`,
+      {},
+      { headers: getSandboxHeaders() }
+    );
+
+    return response.data.data.access_token;
+  } catch (error: any) {
+    throw new Error(`Failed to get access token: ${error.message}`);
+  }
+}
+
+// Get headers for API calls (with access token)
+export function getSandboxAPIHeaders(accessToken: string) {
+  const API_KEY = process.env.SANDBOX_API_KEY;
+
+  if (!API_KEY) {
+    throw new Error('Sandbox API key not configured');
+  }
+
+  return {
+    "x-api-key": API_KEY,
+    "authorization": accessToken,
+    "x-api-version": "1.0",
+    "content-type": "application/json"
+  };
+}
+
 // Validation Functions
 export function validateIFSC(ifsc: string): boolean {
   const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
