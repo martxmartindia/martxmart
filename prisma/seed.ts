@@ -216,7 +216,11 @@ async function main() {
 
   for (const coupon of sampleCoupons) {
     try {
-      await prisma.coupon.create({ data: coupon });
+      await prisma.coupon.upsert({
+        where: { code: coupon.code },
+        update: {},
+        create: coupon,
+      });
       console.log(`✅ Created coupon: ${coupon.code}`);
     } catch (error: any) {
       if (error.code === 'P2002') {
@@ -231,8 +235,10 @@ async function main() {
   console.log("🌱 Seeding franchise data...");
 
   // Create a category for franchise products
-  const franchiseCategory = await prisma.category.create({
-    data: {
+  const franchiseCategory = await prisma.category.upsert({
+    where: { slug: "industrial-machinery" },
+    update: {},
+    create: {
       name: "Industrial Machinery",
       slug: "industrial-machinery",
       type: "MACHINE",
@@ -283,8 +289,10 @@ async function main() {
 
   // Create sample customers
   const customers = await Promise.all([
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: "amit.sharma@email.com" },
+      update: {},
+      create: {
         name: "Amit Sharma",
         email: "amit.sharma@email.com",
         phone: "+919876543212",
@@ -292,8 +300,10 @@ async function main() {
         isVerified: true,
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: "priya.singh@email.com" },
+      update: {},
+      create: {
         name: "Priya Singh",
         email: "priya.singh@email.com",
         phone: "+919876543213",
@@ -301,8 +311,10 @@ async function main() {
         isVerified: true,
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: "vikram.patel@email.com" },
+      update: {},
+      create: {
         name: "Vikram Patel",
         email: "vikram.patel@email.com",
         phone: "+919876543214",
@@ -310,8 +322,10 @@ async function main() {
         isVerified: true,
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: "sneha.gupta@email.com" },
+      update: {},
+      create: {
         name: "Sneha Gupta",
         email: "sneha.gupta@email.com",
         phone: "+919876543215",
@@ -355,8 +369,10 @@ async function main() {
 
   // Create sample products
   const products = await Promise.all([
-    prisma.product.create({
-      data: {
+    prisma.product.upsert({
+      where: { slug: "industrial-cnc-machine" },
+      update: {},
+      create: {
         name: "Industrial CNC Machine",
         slug: "industrial-cnc-machine",
         description: "High-precision CNC machining center for industrial use",
@@ -379,8 +395,10 @@ async function main() {
         categoryId: franchiseCategory.id,
       },
     }),
-    prisma.product.create({
-      data: {
+    prisma.product.upsert({
+      where: { slug: "food-processing-line" },
+      update: {},
+      create: {
         name: "Food Processing Line",
         slug: "food-processing-line",
         description: "Complete automated food processing production line",
@@ -400,7 +418,7 @@ async function main() {
         industryType: ["Food Processing"],
         applications: ["Food manufacturing", "Packaging"],
         installationRequired: true,
-        categoryId: "sample-category-id", // This would need to be a real category ID
+        categoryId: franchiseCategory.id,
       },
     }),
   ]);
@@ -490,8 +508,10 @@ async function main() {
 
   // Create franchise staff
   const staffUsers = await Promise.all([
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: "ravi.kumar@franchise.com" },
+      update: {},
+      create: {
         name: "Ravi Kumar",
         email: "ravi.kumar@franchise.com",
         phone: "+919876543216",
@@ -499,8 +519,10 @@ async function main() {
         isVerified: true,
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: "meera.joshi@franchise.com" },
+      update: {},
+      create: {
         name: "Meera Joshi",
         email: "meera.joshi@franchise.com",
         phone: "+919876543217",
@@ -539,6 +561,139 @@ async function main() {
     }),
   ]);
   console.log("✅ Created franchise staff");
+  // Create sample vendor
+  const vendorPassword = await hashPassword("vendor123");
+  const vendorUser = await prisma.user.upsert({
+    where: { email: "vendor@martxmart.com" },
+    update: {},
+    create: {
+      name: "TechSupply Industries",
+      email: "vendor@martxmart.com",
+      phone: "+919876543218",
+      password: vendorPassword,
+      role: "VENDOR",
+      isVerified: true,
+    },
+  });
+  console.log("✅ Created vendor user");
+
+  // Create vendor profile with business details
+  const vendorProfile = await prisma.vendorProfile.create({
+    data: {
+      userId: vendorUser.id,
+      businessName: "TechSupply Industries Pvt Ltd",
+      address: "456 Industrial Estate, Mumbai - 400001",
+      city: "Mumbai",
+      state: "Maharashtra",
+      email: "vendor@martxmart.com",
+      phone: "+919876543218",
+      gstNumber: "27AABCT1234F1Z5",
+      panNumber: "AABCT1234F",
+      accountNumber: "987654321098",
+      ifscCode: "SBIN0001234",
+      bankName: "State Bank of India",
+      businessType: "MANUFACTURER",
+      category: "Industrial Equipment",
+      experience: 8,
+      annualTurnover: 50000000, // 50 lakhs
+      employeeCount: 25,
+      certifications: ["ISO 9001:2015", "CE Marking"],
+      specializations: ["CNC Machines", "Industrial Automation", "Manufacturing Equipment"],
+      serviceAreas: ["Maharashtra", "Gujarat", "Karnataka"],
+      status: "ACTIVE",
+      rating: 4.5,
+      totalOrders: 150,
+      responseTime: 2, // hours
+      isActive: true,
+    },
+  });
+  console.log("✅ Created vendor profile");
+
+  // Create sample vendor products
+  const vendorProducts = await Promise.all([
+    prisma.product.upsert({
+      where: { slug: "precision-lathe-machine" },
+      update: {},
+      create: {
+        name: "Precision Lathe Machine",
+        slug: "precision-lathe-machine",
+        description: "High-precision lathe machine for metalworking applications",
+        price: 850000.00,
+        stock: 3,
+        featured: false,
+        images: ["https://example.com/lathe-machine.jpg"],
+        brand: "TechSupply",
+        modelNumber: "TS-LM-2000",
+        hsnCode: "84581000",
+        gstPercentage: 18,
+        capacity: "200mm swing",
+        powerConsumption: "5kW",
+        dimensions: "150x100x120cm",
+        weight: 800,
+        warranty: "1 Year",
+        industryType: ["Manufacturing", "Automotive"],
+        applications: ["Metal turning", "Precision machining"],
+        installationRequired: true,
+        categoryId: franchiseCategory.id,
+        VendorProfile: {
+          connect: { id: vendorProfile.id }
+        }
+      },
+    }),
+    prisma.product.upsert({
+      where: { slug: "hydraulic-press-machine" },
+      update: {},
+      create: {
+        name: "Hydraulic Press Machine",
+        slug: "hydraulic-press-machine",
+        description: "100-ton hydraulic press for industrial forming operations",
+        price: 1200000.00,
+        stock: 2,
+        featured: true,
+        images: ["https://example.com/hydraulic-press.jpg"],
+        brand: "TechSupply",
+        modelNumber: "TS-HP-100",
+        hsnCode: "84622100",
+        gstPercentage: 18,
+        capacity: "100 tons",
+        powerConsumption: "10kW",
+        dimensions: "250x180x200cm",
+        weight: 1500,
+        warranty: "18 Months",
+        industryType: ["Manufacturing", "Automotive"],
+        applications: ["Metal forming", "Pressing operations"],
+        installationRequired: true,
+        categoryId: franchiseCategory.id,
+        VendorProfile: {
+          connect: { id: vendorProfile.id }
+        }
+      },
+    }),
+  ]);
+  console.log("✅ Created vendor products");
+
+  // Create vendor inventory
+  await Promise.all([
+    prisma.productInventory.create({
+      data: {
+        productId: vendorProducts[0].id,
+        franchiseId: franchise.id,
+        quantity: 1,
+        minStock: 1,
+        location: "Vendor Warehouse",
+      },
+    }),
+    prisma.productInventory.create({
+      data: {
+        productId: vendorProducts[1].id,
+        franchiseId: franchise.id,
+        quantity: 1,
+        minStock: 1,
+        location: "Vendor Warehouse",
+      },
+    }),
+  ]);
+  console.log("✅ Created vendor inventory");
 
   console.log("🎉 Database seeding completed successfully!");
 }

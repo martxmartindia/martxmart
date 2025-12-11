@@ -2,9 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
+import Link from 'next/link';
 
 export default function VendorLoginPage() {
   const router = useRouter();
@@ -21,26 +24,36 @@ export default function VendorLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/vendor/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+      const result = await signIn('vendor-credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+      if (result?.error) {
+        throw new Error(result.error);
       }
 
-      // Store token in cookie
-      document.cookie = `token=${data.token}; path=/`;
-      router.push('/vendor/dashboard');
-    } catch (err:any) {
+      if (result?.ok) {
+        toast.success('Login successful');
+        router.push('/vendor-portal/dashboard');
+      } else {
+        throw new Error('Login failed');
+      }
+    } catch (err: any) {
+      console.error('Vendor login error:', err);
       setError(err.message || 'Failed to login');
+      toast.error(err.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
   };
 
   return (
@@ -54,19 +67,23 @@ export default function VendorLoginPage() {
             <div className="space-y-2">
               <Input
                 type="email"
+                name="email"
                 placeholder="Email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={handleChange}
                 required
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
               <Input
                 type="password"
+                name="password"
                 placeholder="Password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={handleChange}
                 required
+                disabled={loading}
               />
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -78,6 +95,15 @@ export default function VendorLoginPage() {
               {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
+          
+          <div className="mt-4 text-center text-sm">
+            <p className="text-gray-600">
+              Don't have a vendor account?{' '}
+              <Link href="/vendor-registration" className="text-orange-600 hover:text-orange-700 font-medium">
+                Apply to become a vendor
+              </Link>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

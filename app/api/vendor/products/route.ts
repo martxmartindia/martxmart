@@ -1,41 +1,45 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { getAuthenticatedUser } from "@/lib/auth-helpers"
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 
 export async function GET(req: Request) {
   try {
     // Check authentication
     const user = await getAuthenticatedUser();
-    if (!user || (user.role !== "VENDOR" && user.role !== "ADMIN")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!user || user.role !== "VENDOR") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = user.id
 
-    // Get vendor ID
+    // Get vendor profile
     const vendor = await prisma.vendorProfile.findUnique({
-      where: { userId: userId as string},
-    })
+      where: { userId: user.id },
+    });
 
     if (!vendor) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 });
     }
 
     // Get query parameters
-    const { searchParams } = new URL(req.url)
-    const page = Number.parseInt(searchParams.get("page") || "1")
-    const limit = Number.parseInt(searchParams.get("limit") || "10")
-    const categoryId = searchParams.get("categoryId") || undefined
-    const search = searchParams.get("search") || undefined
+    const { searchParams } = new URL(req.url);
+    const page = Number.parseInt(searchParams.get("page") || "1");
+    const limit = Number.parseInt(searchParams.get("limit") || "10");
+    const categoryId = searchParams.get("categoryId") || undefined;
+    const search = searchParams.get("search") || undefined;
 
-    const skip = (page - 1) * limit
+    const skip = (page - 1) * limit;
 
     // Build filter conditions
     const where: any = {
-      vendorId: vendor.id,
-    }
+      // Filter products by vendor through the many-to-many relationship
+      VendorProfile: {
+        some: {
+          id: vendor.id,
+        },
+      },
+    };
 
     if (categoryId) {
-      where.categoryId = categoryId
+      where.categoryId = categoryId;
     }
 
     if (search) {
@@ -43,7 +47,7 @@ export async function GET(req: Request) {
         { name: { contains: search, mode: "insensitive" } },
         { description: { contains: search, mode: "insensitive" } },
         { brand: { contains: search, mode: "insensitive" } },
-      ]
+      ];
     }
 
     // Get products with pagination
@@ -56,16 +60,22 @@ export async function GET(req: Request) {
             name: true,
           },
         },
+        VendorProfile: {
+          select: {
+            id: true,
+            businessName: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
       },
       skip,
       take: limit,
-    })
+    });
 
     // Get total count for pagination
-    const total = await prisma.product.count({ where })
+    const total = await prisma.product.count({ where });
 
     return NextResponse.json({
       products,
@@ -75,10 +85,10 @@ export async function GET(req: Request) {
         limit,
         totalPages: Math.ceil(total / limit),
       },
-    })
+    });
   } catch (error) {
-    console.error("Error fetching products:", error)
-    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 })
+    console.error("Error fetching products:", error);
+    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
   }
 }
 
@@ -86,26 +96,25 @@ export async function POST(req: Request) {
   try {
     // Check authentication
     const user = await getAuthenticatedUser();
-    if (!user || (user.role !== "VENDOR" && user.role !== "ADMIN")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!user || user.role !== "VENDOR") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = user.id
 
-    // Get vendor ID
+    // Get vendor profile
     const vendor = await prisma.vendorProfile.findUnique({
-      where: { userId: userId as string },
-    })
+      where: { userId: user.id },
+    });
 
     if (!vendor) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 });
     }
 
     // Get request body
-    const data = await req.json()
+    const data = await req.json();
 
     // Validate required fields
     if (!data.name || !data.description || !data.price || !data.categoryId) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     // Generate slug from name
@@ -114,28 +123,32 @@ export async function POST(req: Request) {
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
-      .trim()
+      .trim();
 
-    // Check if slug is unique
+    // Check if product with similar name already exists for this vendor
     const existingProduct = await prisma.product.findFirst({
       where: {
-        id: userId as string,
-        name: data.name as string,
+        name: data.name,
+        VendorProfile: {
+          some: {
+            id: vendor.id,
+          },
+        },
       },
     });
 
     if (existingProduct) {
-      return NextResponse.json({ error: "Product with similar name already exists" }, { status: 400 })
+      return NextResponse.json({ error: "Product with similar name already exists" }, { status: 400 });
     }
 
     // Create product
     const product = await prisma.product.create({
       data: {
         name: data.name,
-        // slug,
+        slug: slug,
         description: data.description,
         price: data.price,
-        hsnCode: data.hsnCode,
+        hsnCode: data.hsnCode || "",
         stock: data.stock || 0,
         images: data.images || [],
         categoryId: data.categoryId,
@@ -145,14 +158,22 @@ export async function POST(req: Request) {
         weight: data.weight,
         warranty: data.warranty,
         featured: false, // Only admin can set featured
-        // isActive: true,
       },
-    })
+    });
 
-    return NextResponse.json(product, { status: 201 })
+    // Link the product to the vendor
+    await prisma.product.update({
+      where: { id: product.id },
+      data: {
+        VendorProfile: {
+          connect: { id: vendor.id },
+        },
+      },
+    });
+
+    return NextResponse.json(product, { status: 201 });
   } catch (error) {
-    console.error("Error creating product:", error)
-    return NextResponse.json({ error: "Failed to create product" }, { status: 500 })
+    console.error("Error creating product:", error);
+    return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
   }
 }
-

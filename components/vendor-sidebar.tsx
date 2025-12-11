@@ -1,226 +1,153 @@
-"use client"
+'use client';
 
-import type React from "react"
-
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  Users,
-  Settings,
-  BarChart2,
-  FileText,
-  CreditCard,
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
+import { 
+  LayoutDashboard, 
+  Package, 
+  ShoppingCart, 
+  BarChart3, 
+  CreditCard, 
+  Settings, 
   LogOut,
-  ChevronDown,
-  ChevronRight,
-  Menu,
-  User,
-  MessageSquare,
-  HelpCircle,
-} from "lucide-react"
+  User
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from 'sonner';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+} from '@/components/ui/sidebar';
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { toast } from "sonner"
-interface SidebarItem {
-  title: string
-  href: string
-  icon: React.ReactNode
-  submenu?: { title: string; href: string }[]
-}
+const navigation = [
+  { name: 'Dashboard', href: '/vendor-portal/dashboard', icon: LayoutDashboard },
+  { name: 'Products', href: '/vendor-portal/products', icon: Package },
+  { name: 'Orders', href: '/vendor-portal/orders', icon: ShoppingCart },
+  { name: 'Analytics', href: '/vendor-portal/analytics', icon: BarChart3 },
+  { name: 'Payouts', href: '/vendor-portal/payouts', icon: CreditCard },
+  { name: 'Settings', href: '/vendor-portal/settings', icon: Settings },
+];
 
 export function VendorSidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-      })
+      // Call the vendor logout API
+      await fetch('/api/vendor/auth/logout', {
+        method: 'POST',
+      });
 
-      if (response.ok) {
-        toast.success("Logout successful")
-        router.push("/auth/login")
-      } else {
-        throw new Error("Logout failed")
-      }
+      // Sign out from NextAuth
+      await signOut({ 
+        redirect: false,
+        callbackUrl: '/auth/vendor/login'
+      });
+
+      toast.success('Logged out successfully');
+      router.push('/auth/vendor/login');
     } catch (error) {
-      
-      toast.error("Logout failed")
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    } finally {
+      setIsLoggingOut(false);
     }
-  }
-
-  const toggleSubmenu = (title: string) => {
-    if (openSubmenu === title) {
-      setOpenSubmenu(null)
-    } else {
-      setOpenSubmenu(title)
-    }
-  }
-
-  const sidebarItems: SidebarItem[] = [
-    {
-      title: "Dashboard",
-      href: "/vendor/dashboard",
-      icon: <LayoutDashboard className="h-5 w-5" />,
-    },
-    {
-      title: "Products",
-      href: "/vendor/products",
-      icon: <Package className="h-5 w-5" />,
-      submenu: [
-        { title: "All Products", href: "/vendor/products" },
-        { title: "Add Product", href: "/vendor/products/new" },
-        { title: "Categories", href: "/vendor/products/categories" },
-        { title: "Inventory", href: "/vendor/products/inventory" },
-      ],
-    },
-    {
-      title: "Orders",
-      href: "/vendor/orders",
-      icon: <ShoppingCart className="h-5 w-5" />,
-    },
-    {
-      title: "Customers",
-      href: "/vendor/customers",
-      icon: <Users className="h-5 w-5" />,
-    },
-    {
-      title: "Analytics",
-      href: "/vendor/analytics",
-      icon: <BarChart2 className="h-5 w-5" />,
-    },
-    {
-      title: "Payments",
-      href: "/vendor/payments",
-      icon: <CreditCard className="h-5 w-5" />,
-    },
-    {
-      title: "Documents",
-      href: "/vendor/documents",
-      icon: <FileText className="h-5 w-5" />,
-    },
-    {
-      title: "Messages",
-      href: "/vendor/messages",
-      icon: <MessageSquare className="h-5 w-5" />,
-    },
-    {
-      title: "Profile",
-      href: "/vendor/profile",
-      icon: <User className="h-5 w-5" />,
-    },
-    {
-      title: "Help & Support",
-      href: "/vendor/support",
-      icon: <HelpCircle className="h-5 w-5" />,
-    },
-    {
-      title: "Settings",
-      href: "/vendor/settings",
-      icon: <Settings className="h-5 w-5" />,
-    },
-  ]
-
-  const SidebarContent = () => (
-    <div className="flex h-full flex-col">
-      <div className="px-3 py-4">
-        <Link href="/vendor/dashboard" className="flex items-center px-2 py-2">
-          <span className="text-xl font-bold">Vendor Portal</span>
-        </Link>
-      </div>
-      <ScrollArea className="flex-1 px-3">
-        <div className="space-y-1 py-2">
-          {sidebarItems.map((item) => (
-            <div key={item.title}>
-              {item.submenu ? (
-                <div className="space-y-1">
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-between font-normal",
-                      pathname.startsWith(item.href) && "bg-muted font-medium",
-                    )}
-                    onClick={() => toggleSubmenu(item.title)}
-                  >
-                    <div className="flex items-center">
-                      {item.icon}
-                      <span className="ml-3">{item.title}</span>
-                    </div>
-                    {openSubmenu === item.title ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </Button>
-                  {openSubmenu === item.title && (
-                    <div className="ml-4 space-y-1 pl-4 border-l">
-                      {item.submenu.map((subitem) => (
-                        <Button
-                          key={subitem.title}
-                          variant="ghost"
-                          className={cn(
-                            "w-full justify-start font-normal",
-                            pathname === subitem.href && "bg-muted font-medium",
-                          )}
-                          asChild
-                        >
-                          <Link href={subitem.href}>{subitem.title}</Link>
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Button
-                  variant="ghost"
-                  className={cn("w-full justify-start font-normal", pathname === item.href && "bg-muted font-medium")}
-                  asChild
-                >
-                  <Link href={item.href}>
-                    {item.icon}
-                    <span className="ml-3">{item.title}</span>
-                  </Link>
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-      <div className="mt-auto border-t p-3">
-        <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
-          <LogOut className="h-5 w-5" />
-          <span className="ml-3">Logout</span>
-        </Button>
-      </div>
-    </div>
-  )
+  };
 
   return (
-    <>
-      <aside className="hidden w-64 flex-col border-r bg-background md:flex">
-        <SidebarContent />
-      </aside>
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>
-          <Button variant="outline" size="icon" className="md:hidden fixed top-4 left-4 z-40">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle Menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0">
-          <SidebarContent />
-        </SheetContent>
-      </Sheet>
-    </>
-  )
+    <Sidebar variant="inset">
+      <SidebarHeader className="border-b bg-gradient-to-r from-orange-50 to-orange-100/50">
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg">
+            <Package className="h-6 w-6 text-white" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-base font-bold text-gray-900">Vendor Portal</span>
+            <span className="text-xs text-gray-600 font-medium">Manage your store</span>
+          </div>
+        </div>
+      </SidebarHeader>
+      
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <SidebarMenuItem key={item.name}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={item.href} className="transition-all duration-200 hover:bg-accent">
+                        <item.icon className="h-4 w-4" />
+                        <span className="font-medium">{item.name}</span>
+                        {isActive && (
+                          <div className="ml-auto w-1 h-4 bg-orange-500 rounded-full" />
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      
+      <SidebarFooter className="border-t bg-gray-50/50">
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-4 p-3 bg-white rounded-lg border shadow-sm">
+            <Avatar className="h-10 w-10 ring-2 ring-orange-100">
+              <AvatarImage src="/avatars/vendor.png" alt="Vendor" />
+              <AvatarFallback className="bg-orange-100 text-orange-600">
+                <User className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col min-w-0">
+              <p className="text-sm font-semibold truncate text-gray-900">John Vendor</p>
+              <p className="text-xs text-gray-500 truncate">vendor@example.com</p>
+              <div className="flex items-center gap-1 mt-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs text-green-600 font-medium">Online</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600 transition-colors"
+              onClick={() => router.push('/vendor-portal/profile')}
+            >
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              {isLoggingOut ? '...' : 'Logout'}
+            </Button>
+          </div>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
 }

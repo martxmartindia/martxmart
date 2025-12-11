@@ -29,7 +29,6 @@ model User {
   updatedAt           DateTime  @updatedAt
 
   // Relationships
-  vendorProfileid    String?
   addresses          Address[]
   applications       Application[]
   Author             Author?
@@ -43,7 +42,7 @@ model User {
   ServiceApplication ServiceApplication[] @relation("UserApplications")
   ServiceOrder       ServiceOrder[]       @relation("UserOrders")
   taxes              Tax[]
-  vendorProfile      VendorProfile?       @relation(fields: [vendorProfileid], references: [id])
+  vendorProfile      VendorProfile?       @relation("UserVendorProfile")
   VendorApplication  VendorApplication[]
   wishlist           Wishlist[]
   Admin              Admin[]              @relation("AdminToUser")
@@ -58,7 +57,6 @@ model User {
   blogComments       BlogComment[]
   Affiliate          Affiliate[]
   QuoteRequest       QuoteRequest[]
-  VendorProfile      VendorProfile[]      @relation(name: "VendorProfileToUser")
   ProjectReportApplication ProjectReportApplication[]
   carts              Cart[]
 
@@ -113,7 +111,7 @@ model Admin {
   wishlist       Wishlist[]      @relation("AdminToWishlist")
 
   @@index([name, email, phone])
-  User User[] @relation("AdminToUser")
+  users User[] @relation("AdminToUser")
 }
 
 /// ------------------- ADMIN PERMISSIONS -------------------
@@ -351,7 +349,7 @@ model Order {
   shippingAddress   Address?           @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
   billingAddress    Address?           @relation("BillingAddress", fields: [billingAddressId], references: [id])
   paymentId         String?            @unique
-  payment           Payment?           @relation(fields: [paymentId], references: [id], onDelete: Cascade) // Define fields and references here
+  payment           Payment?           @relation("OrderToPayment", fields: [paymentId], references: [id], onDelete: Cascade)
   notes             String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -554,11 +552,26 @@ model VendorProfile {
   isVerified       Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  
+  // Additional fields for comprehensive vendor management
+  category         String?            // Business category
+  experience       Int?               // Years of experience
+  annualTurnover   Decimal?           @db.Decimal(15, 2)  // Annual business turnover
+  employeeCount    Int?               // Number of employees
+  certifications   String[]           // Array of certifications
+  specializations  String[]           // Array of specializations
+  serviceAreas     String[]           // Array of service areas
+  status           VendorStatus       @default(PENDING)
+  rating           Float?             // Vendor rating (0-5)
+  totalOrders      Int?               @default(0)  // Total orders completed
+  responseTime     Int?               // Average response time in hours
+  isActive         Boolean            @default(true)
+  
   Product          Product[]        @relation("VendorProducts")
   Shopping         Shopping[]       @relation("VendorShoppingProducts")
   documents        VendorDocument[]
   userId           String           @unique
-  user             User             @relation(name: "VendorProfileToUser", fields: [userId], references: [id], onDelete: Cascade)
+  user             User             @relation("UserVendorProfile", fields: [userId], references: [id], onDelete: Cascade)
   Admin            Admin[]          @relation("AdminToVendorProfile")
   commissions      Commission[]     @relation("VendorCommissions")
   Franchise        Franchise?       @relation(fields: [franchiseId], references: [id])
@@ -566,10 +579,10 @@ model VendorProfile {
   VendorPayment    VendorPayment[]
   Message          Message[]        @relation("VendorMessages")
   VendorQuote      VendorQuote[]
-  User             User[]
 
   @@index([businessName, businessType])
   @@index([isVerified, createdAt])
+  @@index([status, rating])
 }
 
 /// ------------------- VENDOR APPLICATION -------------------
@@ -614,7 +627,7 @@ model VendorDocument {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
   vendorApplication VendorApplication? @relation(fields: [vendorApplicationId], references: [id], onDelete: SetNull)
-  vendorProfile      VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: SetNull)
+  vendor_profile      VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: SetNull)
 
   @@index([vendorProfileId, documentType])
   @@index([isVerified, createdAt])
@@ -674,8 +687,8 @@ model Payment {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   serviceId         String?       @unique
-  order             Order?        @relation // Remove fields, references, and onDelete
-  ServiceOrder      ServiceOrder? @relation // Remove fields, references, and onDelete
+  order             Order?        @relation("OrderToPayment")
+  ServiceOrder      ServiceOrder? @relation("ServiceOrderToPayment")
 
   @@index([serviceId, status])
   @@index([status, method])
@@ -1170,7 +1183,7 @@ model ServiceOrder {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   paymentId          String?             @unique
-  payment            Payment?            @relation(fields: [paymentId], references: [id], onDelete: Cascade, map: "ServiceOrder_payment_fkey")
+  payment            Payment?            @relation("ServiceOrderToPayment", fields: [paymentId], references: [id], onDelete: Cascade)
   serviceApplication ServiceApplication? @relation("OrderApplication")
   service            Service             @relation("ServiceOrders", fields: [serviceId], references: [id], map: "ServiceOrder_service_fkey") // Unique constraint name
   user               User                @relation("UserOrders", fields: [userId], references: [id])
@@ -1882,4 +1895,12 @@ enum OTPVerificationStatus {
   FAILED
   EXPIRED
   BLOCKED
+}
+
+enum VendorStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
 }

@@ -13,6 +13,13 @@ const roleAccessMap = {
   
   // Franchise routes
   "/franchise": ["FRANCHISE"],
+  
+  // Vendor routes
+  "/vendor-portal": ["VENDOR"],
+  "/api/vendor": ["VENDOR"],
+  "/api/vendor-portal": ["VENDOR"],
+  
+  // Franchise routes
   "/api/franchise": ["FRANCHISE"],
   
   // Customer routes (all authenticated users can access customer areas)
@@ -49,6 +56,8 @@ export default withAuth(
           redirectUrl = "/auth/author/login";
         } else if (userRole === "FRANCHISE") {
           redirectUrl = "/auth/franchise/login";
+        } else if (userRole === "VENDOR") {
+          redirectUrl = "/auth/vendor/login";
         }
 
         return NextResponse.redirect(new URL(redirectUrl, req.url));
@@ -78,6 +87,7 @@ export default withAuth(
           "/auth/admin/login",
           "/auth/author/login",
           "/auth/franchise/login",
+          "/auth/vendor/login",
           "/api/auth",
           "/api/public",
         ];

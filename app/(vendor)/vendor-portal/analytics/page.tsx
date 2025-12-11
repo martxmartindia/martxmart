@@ -49,7 +49,14 @@ interface AnalyticsData {
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
 
 export default function VendorAnalytics() {
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>({
+    revenue: { current: 0, previous: 0, change: 0, data: [] },
+    orders: { current: 0, previous: 0, change: 0, data: [] },
+    customers: { current: 0, previous: 0, change: 0 },
+    products: { current: 0, previous: 0, change: 0 },
+    topProducts: [],
+    categoryBreakdown: []
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [timeRange, setTimeRange] = useState("30")
 
@@ -133,15 +140,15 @@ export default function VendorAnalytics() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(analyticsData.revenue.current)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(analyticsData?.revenue?.current ?? 0)}</div>
             <div className="flex items-center text-xs">
-              {analyticsData.revenue.change >= 0 ? (
+              {(analyticsData?.revenue?.change ?? 0) >= 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
               ) : (
                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
               )}
-              <span className={analyticsData.revenue.change >= 0 ? "text-green-500" : "text-red-500"}>
-                {formatPercentage(analyticsData.revenue.change)}
+              <span className={(analyticsData?.revenue?.change ?? 0) >= 0 ? "text-green-500" : "text-red-500"}>
+                {formatPercentage(analyticsData?.revenue?.change ?? 0)}
               </span>
               <span className="text-muted-foreground ml-1">from last period</span>
             </div>
@@ -154,15 +161,15 @@ export default function VendorAnalytics() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.orders.current}</div>
+            <div className="text-2xl font-bold">{analyticsData?.orders?.current ?? 0}</div>
             <div className="flex items-center text-xs">
-              {analyticsData.orders.change >= 0 ? (
+              {(analyticsData?.orders?.change ?? 0) >= 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
               ) : (
                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
               )}
-              <span className={analyticsData.orders.change >= 0 ? "text-green-500" : "text-red-500"}>
-                {formatPercentage(analyticsData.orders.change)}
+              <span className={(analyticsData?.orders?.change ?? 0) >= 0 ? "text-green-500" : "text-red-500"}>
+                {formatPercentage(analyticsData?.orders?.change ?? 0)}
               </span>
               <span className="text-muted-foreground ml-1">from last period</span>
             </div>
@@ -175,15 +182,15 @@ export default function VendorAnalytics() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.customers.current}</div>
+            <div className="text-2xl font-bold">{analyticsData?.customers?.current ?? 0}</div>
             <div className="flex items-center text-xs">
-              {analyticsData.customers.change >= 0 ? (
+              {(analyticsData?.customers?.change ?? 0) >= 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
               ) : (
                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
               )}
-              <span className={analyticsData.customers.change >= 0 ? "text-green-500" : "text-red-500"}>
-                {formatPercentage(analyticsData.customers.change)}
+              <span className={(analyticsData?.customers?.change ?? 0) >= 0 ? "text-green-500" : "text-red-500"}>
+                {formatPercentage(analyticsData?.customers?.change ?? 0)}
               </span>
               <span className="text-muted-foreground ml-1">from last period</span>
             </div>
@@ -196,15 +203,15 @@ export default function VendorAnalytics() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.products.current}</div>
+            <div className="text-2xl font-bold">{analyticsData?.products?.current ?? 0}</div>
             <div className="flex items-center text-xs">
-              {analyticsData.products.change >= 0 ? (
+              {(analyticsData?.products?.change ?? 0) >= 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
               ) : (
                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
               )}
-              <span className={analyticsData.products.change >= 0 ? "text-green-500" : "text-red-500"}>
-                {formatPercentage(analyticsData.products.change)}
+              <span className={(analyticsData?.products?.change ?? 0) >= 0 ? "text-green-500" : "text-red-500"}>
+                {formatPercentage(analyticsData?.products?.change ?? 0)}
               </span>
               <span className="text-muted-foreground ml-1">from last period</span>
             </div>
@@ -222,7 +229,7 @@ export default function VendorAnalytics() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={analyticsData.revenue.data}>
+              <LineChart data={analyticsData?.revenue?.data ?? []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis tickFormatter={(value) => `₹${value / 1000}k`} />
@@ -241,7 +248,7 @@ export default function VendorAnalytics() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={analyticsData.orders.data}>
+              <BarChart data={analyticsData?.orders?.data ?? []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -262,16 +269,20 @@ export default function VendorAnalytics() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={analyticsData.categoryBreakdown}
+                  data={analyticsData?.categoryBreakdown ?? []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
+                  label={({ category, value }) => {
+                    const total = (analyticsData?.categoryBreakdown ?? []).reduce((sum, item) => sum + item.value, 0);
+                    const percent = total > 0 ? (value / total) * 100 : 0;
+                    return `${category} ${percent.toFixed(0)}%`;
+                  }}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {analyticsData.categoryBreakdown.map((entry, index) => (
+                  {(analyticsData?.categoryBreakdown ?? []).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -289,7 +300,7 @@ export default function VendorAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {analyticsData.topProducts.map((product, index) => (
+              {(analyticsData?.topProducts ?? []).map((product, index) => (
                 <div key={product.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">

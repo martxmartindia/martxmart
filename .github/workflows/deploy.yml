@@ -41,6 +41,8 @@ jobs:
             # Write environment variables to .env file
             cat > .env <<EOL
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+            NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}
+            NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             SMTP_USER=${{ secrets.SMTP_USER }}
             DIRECT_URL=${{ secrets.DIRECT_URL }}
             ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
@@ -63,6 +65,9 @@ jobs:
             FAST2SMS_MESSAGE_ID=${{ secrets.FAST2SMS_MESSAGE_ID }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             LANGBASE_API_KEY=${{ secrets.LANGBASE_API_KEY }}
+            SANDBOX_API_KEY=${{ secrets.SANDBOX_API_KEY }}
+            SANDBOX_API_SECRET=${{ secrets.SANDBOX_API_SECRET }}
+            SANDBOX_BASE_URL=${{ secrets.SANDBOX_BASE_URL }}
             EOL
 
             # Build and restart app

@@ -583,6 +583,92 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+
+    // Vendor Credentials Provider
+    CredentialsProvider({
+      id: "vendor-credentials",
+      name: "Vendor Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials, req) {
+        console.log("🔍 [Vendor Provider] vendor-credentials called:", {
+          hasEmail: !!credentials?.email,
+          hasPassword: !!credentials?.password,
+          email: credentials?.email
+        });
+
+        if (!credentials?.email || !credentials?.password) {
+          console.error("❌ [Vendor Provider] Missing email or password");
+          return null;
+        }
+
+        try {
+          console.log("🔍 [Vendor Provider] Looking for vendor user with email:", credentials.email.toLowerCase());
+
+          // Find vendor user
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email.toLowerCase() },
+          });
+
+          if (!user) {
+            console.error("❌ [Vendor Provider] No user found with email:", credentials.email.toLowerCase());
+            return null;
+          }
+
+          if (user.role !== "VENDOR") {
+            console.error("❌ [Vendor Provider] User found but not VENDOR role:", user.role);
+            return null;
+          }
+
+          if (!user.password) {
+            console.error("❌ [Vendor Provider] User found but no password set");
+            return null;
+          }
+
+          console.log("🔍 [Vendor Provider] User found:", {
+            id: user.id,
+            name: user.name,
+            role: user.role,
+            hasPassword: !!user.password
+          });
+
+          // Verify password
+          const isValidPassword = await verifyPassword(
+            credentials.password,
+            user.password
+          );
+
+          console.log("🔍 [Vendor Provider] Password verification:", { isValidPassword });
+
+          if (!isValidPassword) {
+            console.error("❌ [Vendor Provider] Invalid password for user:", credentials.email.toLowerCase());
+            return null;
+          }
+
+          const result = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            image: user.image,
+          };
+
+          console.log("✅ [Vendor Provider] Authentication successful:", {
+            id: result.id,
+            role: result.role,
+            email: result.email
+          });
+
+          return result;
+        } catch (error) {
+          console.error("❌ [Vendor Provider] Exception in vendor-credentials:", error);
+          return null;
+        }
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
@@ -604,7 +690,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      
+       
       // Handle the case when session is null/undefined
       if (!session) {
         const minimalSession = {
@@ -642,7 +728,7 @@ export const authOptions: NextAuthOptions = {
         user.name = token.name as string || null;
         user.email = token.email as string || null;
         user.image = token.image as string || null;
-    
+     
       } else{
         console.warn("⚠️ [Session Callback] No token found, setting default session user values");
       }
