@@ -363,7 +363,7 @@ function EnhancedProductsTable({
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-md overflow-hidden bg-gray-100">
-                        {product.images[0] && !product.images[0].includes('via.placeholder.com') ? (
+                        {product.images[0] ? (
                           <Image
                             src={product.images[0]}
                             alt={product.name}

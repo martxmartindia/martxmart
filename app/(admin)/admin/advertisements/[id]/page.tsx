@@ -30,12 +30,8 @@ export default function EditAdvertisementPage({ params }: { params: Promise<{ id
     const fetchAdvertisement = async () => {
       try {
         const { id } = await params;
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/admin/advertisements/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        // NextAuth automatically handles authentication via cookies
+        const response = await fetch(`/api/admin/advertisements/${id}`);
         
         if (response.ok) {
           const data = await response.json();

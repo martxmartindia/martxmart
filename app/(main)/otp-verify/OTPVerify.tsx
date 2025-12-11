@@ -30,7 +30,7 @@ export default function OTPVerifyPage() {
 
     useEffect(() => {
         if (!phone) {
-            router.replace('/login');
+            router.replace('/auth/login');
             return;
         }
 

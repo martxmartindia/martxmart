@@ -68,7 +68,6 @@ export default function AdminProducts() {
 
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem("token")
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: "10",
@@ -77,11 +76,7 @@ export default function AdminProducts() {
         ...(statusFilter !== "all" && { status: statusFilter }),
       })
 
-      const response = await fetch(`/api/admin/shopping/products?${params}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const response = await fetch(`/api/admin/shopping/products?${params}`);
 
       if (response.ok) {
         const data = await response.json()
@@ -110,12 +105,8 @@ export default function AdminProducts() {
 
   const handleDeleteProduct = async (productId: string) => {
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch(`/api/admin/shopping/products/${productId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       })
 
       if (response.ok) {
@@ -131,12 +122,10 @@ export default function AdminProducts() {
 
   const toggleProductStatus = async (productId: string, isAvailable: boolean) => {
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch(`/api/admin/shopping/products/${productId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ isAvailable: !isAvailable }),
       })

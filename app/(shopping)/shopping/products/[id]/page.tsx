@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
+import { useSession } from "next-auth/react"
 
 interface Product {
   id: string
@@ -68,6 +69,7 @@ export default function ProductDetailPage() {
   const [isInWishlist, setIsInWishlist] = useState(false)
   const [addingToCart, setAddingToCart] = useState(false)
   const [togglingWishlist, setTogglingWishlist] = useState(false)
+  const { data: session } = useSession()
 
   useEffect(() => {
     if (params.id) {
@@ -83,9 +85,8 @@ export default function ProductDetailPage() {
         setData(apiData)
         
         // Check if in wishlist
-        const token = localStorage.getItem("token")
-        if (token) {
-          checkWishlistStatus(id, token)
+        if (session) {
+          checkWishlistStatus(id, session.user.id)
         } else {
           const wishlist = JSON.parse(localStorage.getItem("wishlist") || "[]")
           setIsInWishlist(wishlist.includes(id))
@@ -103,9 +104,7 @@ export default function ProductDetailPage() {
 
   const checkWishlistStatus = async (productId: string, token: string) => {
     try {
-      const response = await fetch("/api/shopping/wishlist", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const response = await fetch("/api/shopping/wishlist");
       if (response.ok) {
         const wishlistData = await response.json()
         // Handle different response formats
@@ -126,8 +125,7 @@ export default function ProductDetailPage() {
   const addToCart = async () => {
     if (!data?.product) return
     
-    const token = localStorage.getItem("token")
-    if (!token) {
+    if (!session) {
       toast.error("Please login to add items to cart")
       router.push("/auth/login")
       return
@@ -139,7 +137,6 @@ export default function ProductDetailPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           shoppingId: data.product.id,
@@ -164,8 +161,7 @@ export default function ProductDetailPage() {
   const toggleWishlist = async () => {
     if (!data?.product) return
     
-    const token = localStorage.getItem("token")
-    if (!token) {
+    if (!session) {
       const wishlist = JSON.parse(localStorage.getItem("wishlist") || "[]")
       const newWishlist = isInWishlist
         ? wishlist.filter((id: string) => id !== data.product.id)
@@ -181,7 +177,6 @@ export default function ProductDetailPage() {
       if (isInWishlist) {
         const response = await fetch(`/api/shopping/wishlist?shoppingId=${data.product.id}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
         })
         if (response.ok) {
           setIsInWishlist(false)
@@ -192,7 +187,6 @@ export default function ProductDetailPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ shoppingId: data.product.id }),
         })
@@ -322,7 +316,7 @@ export default function ProductDetailPage() {
           <div className="space-y-4">
             <div className="relative aspect-square bg-white rounded-2xl overflow-hidden shadow-lg group">
               <Image
-                src={product.images?.[selectedImage] || "/placeholder-product.jpg"}
+                src={product.images?.[selectedImage] || "/placeholder.png"}
                 alt={`${product.name} - Main product image`}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -613,7 +607,7 @@ export default function ProductDetailPage() {
                 <Card key={relatedProduct.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md">
                   <div className="relative h-48 bg-gray-50">
                     <Image
-                      src={relatedProduct.images?.[0] || "/placeholder-product.jpg"}
+                      src={relatedProduct.images?.[0] || "/placeholder.png"}
                       alt={`${relatedProduct.name} - Related product image`}
                       fill
                       className="object-cover group-hover:scale-110 transition-transform duration-500"

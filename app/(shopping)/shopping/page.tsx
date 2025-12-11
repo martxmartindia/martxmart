@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 
 interface Product {
   id: string;
@@ -49,6 +50,7 @@ interface HomeData {
 }
 
 export default function HomePage() {
+  const { data: session } = useSession();
   const [homeData, setHomeData] = useState<HomeData | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,8 +108,7 @@ const fetchHomeData = async () => {
   };
 
   const toggleWishlist = async (productId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (!session) {
       // Handle guest wishlist
       const newWishlist = wishlist.includes(productId)
         ? wishlist.filter(id => id !== productId)
@@ -121,9 +122,6 @@ const fetchHomeData = async () => {
       if (wishlist.includes(productId)) {
         await fetch(`/api/shopping/wishlist?shoppingId=${productId}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
         });
         setWishlist(prev => prev.filter(id => id !== productId));
       } else {
@@ -131,7 +129,6 @@ const fetchHomeData = async () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({ shoppingId: productId }),
         });
@@ -143,8 +140,7 @@ const fetchHomeData = async () => {
   };
 
   const addToCart = async (productId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (!session) {
       // Redirect to login
       window.location.href = '/auth/login';
       return;
@@ -155,7 +151,6 @@ const fetchHomeData = async () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           shoppingId: productId,
@@ -178,7 +173,7 @@ const fetchHomeData = async () => {
         <div className="relative">
           <div className="relative h-64">
             <Image
-              src={product.images[0] || '/placeholder-product.jpg'}
+              src={product.images[0] || '/placeholder.png'}
               alt={product.name}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-300"

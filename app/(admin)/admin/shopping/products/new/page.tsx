@@ -66,12 +66,11 @@ export default function NewShoppingProductPage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      // NextAuth automatically handles authentication via cookies
       const response = await fetch('/api/admin/shopping/products', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           ...formData,

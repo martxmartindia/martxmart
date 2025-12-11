@@ -34,6 +34,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { useSession } from "next-auth/react";
 
 interface Product {
   id: string;
@@ -90,6 +91,7 @@ interface SearchData {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const { data: session } = useSession();
 
   useEffect(() => {
     const query = searchParams.get("q");
@@ -156,8 +158,7 @@ interface SearchData {
   };
 
   const toggleWishlist = async (productId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!session) {
       const newWishlist = wishlist.includes(productId)
         ? wishlist.filter((id) => id !== productId)
         : [...wishlist, productId];
@@ -170,7 +171,6 @@ interface SearchData {
       if (wishlist.includes(productId)) {
         await fetch(`/api/shopping/wishlist?shoppingId=${productId}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
         });
         setWishlist((prev) => prev.filter((id) => id !== productId));
       } else {
@@ -178,7 +178,6 @@ interface SearchData {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ shoppingId: productId }),
         });
@@ -190,8 +189,7 @@ interface SearchData {
   };
 
   const addToCart = async (productId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!session) {
       window.location.href = "/auth/login";
       return;
     }
@@ -201,7 +199,6 @@ interface SearchData {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ shoppingId: productId, quantity: 1 }),
       });

@@ -75,12 +75,8 @@ export default function EditProductPage({ params }: EditProductPageProps) {
 
   const fetchProduct = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/shopping/products/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // NextAuth automatically handles authentication via cookies
+      const response = await fetch(`/api/admin/shopping/products/${id}`);
 
       if (response.ok) {
         const product = await response.json();
@@ -131,12 +127,11 @@ export default function EditProductPage({ params }: EditProductPageProps) {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      // NextAuth automatically handles authentication via cookies
       const response = await fetch(`/api/admin/shopping/products/${productId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           ...formData,

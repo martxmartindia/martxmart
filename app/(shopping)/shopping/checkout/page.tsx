@@ -151,14 +151,12 @@ export default function CheckoutPage() {
     if (!selectedAddress || !paymentMethod) return
 
     setIsProcessing(true)
-    const token = localStorage.getItem("token")
 
     try {
       const response = await fetch("/api/shopping/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           shippingAddressId: selectedAddress,
@@ -188,7 +186,6 @@ export default function CheckoutPage() {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                   razorpay_order_id: response.razorpay_order_id,

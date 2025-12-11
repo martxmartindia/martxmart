@@ -87,12 +87,10 @@ export default function AdminUsersPage() {
   }
  const toggleUserStatus = async (userId: string, isDeleted: boolean) => {
     try {
-      const token = localStorage.getItem("token")
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ isDeleted: !isDeleted }),
       })

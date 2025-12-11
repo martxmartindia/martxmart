@@ -127,7 +127,7 @@ const ProductCard = ({ product }: { product: Product }) => {
         <Link href={`/products/${product.id}`} className="block">
           <div className="relative h-36 sm:h-44 md:h-48 lg:h-52 overflow-hidden rounded-t-xl bg-gray-100">
             <Image
-              src={!imageError && product.images[0] ? product.images[0] : "/placeholder-product.jpg"}
+              src={!imageError && product.images[0] ? product.images[0] : "/placeholder.png"}
               alt={product.name}
               fill
               sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 
 interface Product {
   id: string;
@@ -31,10 +32,10 @@ interface ProductGridProps {
 
 export default function ProductGrid({ products, loading }: ProductGridProps) {
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const { data: session } = useSession();
 
   const addToCart = async (productId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (!session) {
       window.location.href = '/auth/login';
       return;
     }
@@ -44,7 +45,6 @@ export default function ProductGrid({ products, loading }: ProductGridProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           shoppingId: productId,
@@ -98,7 +98,7 @@ export default function ProductGrid({ products, loading }: ProductGridProps) {
             <div className="relative">
               <div className="relative h-64">
                 <Image
-                  src={product.images[0] || '/placeholder-product.jpg'}
+                  src={product.images[0] || '/placeholder.png'}
                   alt={product.name}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"

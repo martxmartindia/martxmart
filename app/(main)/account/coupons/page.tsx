@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import CouponList from '@/components/coupons/CouponList';
 import Link from 'next/link';
-
+import { useSession } from 'next-auth/react';
 type CouponData = {
   id: string;
   code: string;
@@ -13,14 +13,14 @@ type CouponData = {
 };
 
 export default function CouponPage() {
+  const { data: session } = useSession();
   const [coupons, setCoupons] = useState<CouponData[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
 
-    if (!token) {
+    if (!session) {
       setError('Unauthorized. Please login.');
       return;
     }
@@ -31,7 +31,6 @@ export default function CouponPage() {
         const response = await fetch('/api/coupons', {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
           },
           cache: 'no-store',
         });
@@ -58,7 +57,6 @@ export default function CouponPage() {
         console.error('Error details:', {
           message: err instanceof Error ? err.message : 'Unknown error',
           stack: err instanceof Error ? err.stack : undefined,
-          token: token ? 'Present' : 'Missing',
           retryCount
         });
         

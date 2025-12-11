@@ -14,6 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 interface Product {
   id: string;
@@ -56,6 +57,7 @@ interface CategoryData {
 
 export default function CategoryPage() {
   const params = useParams();
+  const { data: session } = useSession();
   const router = useRouter();
   const [categoryData, setCategoryData] = useState<CategoryData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,6 @@ export default function CategoryPage() {
   };
 
   const toggleWishlist = async (productId: string) => {
-    const token = localStorage.getItem("token");
     const isInWishlist = wishlist.includes(productId);
     const newWishlist = isInWishlist
       ? wishlist.filter((id) => id !== productId)
@@ -129,12 +130,11 @@ export default function CategoryPage() {
     setWishlist(newWishlist);
     localStorage.setItem("wishlist", JSON.stringify(newWishlist));
 
-    if (token) {
+    if (session) {
       try {
         if (isInWishlist) {
           await fetch(`/api/shopping/wishlist?shoppingId=${productId}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
           });
           toast.success("Removed from wishlist");
         } else {
@@ -142,7 +142,6 @@ export default function CategoryPage() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ shoppingId: productId }),
           });
@@ -160,8 +159,7 @@ export default function CategoryPage() {
   };
 
   const addToCart = async (productId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!session) {
       toast.error("Please login to add items to cart");
       router.push("/auth/login");
       return;
@@ -173,7 +171,6 @@ export default function CategoryPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ shoppingId: productId, quantity: 1 }),
       });
@@ -275,7 +272,7 @@ export default function CategoryPage() {
       <div className="relative">
         <div className="relative h-64 bg-gray-50">
           <Image
-            src={product.images?.[0] || "/placeholder-product.jpg"}
+            src={product.images?.[0] || "/placeholder.png"}
             alt={`${product.name} - Product image`}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500"

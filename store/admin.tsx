@@ -14,7 +14,6 @@ interface AdminState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isAdmin: boolean;
-  token: string | null;
   adminData: AdminData | null;
 }
 
@@ -36,7 +35,6 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     isAuthenticated: false,
     isLoading: true, // Start with loading true for SSR
     isAdmin: false,
-    token: null,
     adminData: null,
   });
 
@@ -59,7 +57,6 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
             isAuthenticated: !!token,
             isLoading: false,
             isAdmin: !!token, // Adjust based on your logic
-            token,
             adminData: null, // Fetch from API if needed
           });
         } else {
@@ -76,9 +73,6 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
   // Persist state to cookies
   const persistState = (newState: Partial<AdminState>) => {
     const updatedState = { ...state, ...newState };
-    if (typeof window !== 'undefined' && newState.token !== undefined) {
-      document.cookie = `token=${newState.token || ''}; path=/;${newState.token ? '' : ' expires=Thu, 01 Jan 1970 00:00:00 UTC'}`;
-    }
     setState(updatedState);
   };
 
@@ -119,7 +113,6 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       persistState({
         isAuthenticated: true,
         isAdmin: true,
-        token: data.token,
         adminData,
       });
     } catch (error) {
@@ -134,7 +127,6 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     persistState({
       isAuthenticated: false,
       isAdmin: false,
-      token: null,
       adminData: null,
     });
   };

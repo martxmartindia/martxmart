@@ -7,7 +7,7 @@ import Link from "next/link"
 import { CheckCircle, Package, Truck, Download, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
+import { useSession } from 'next-auth/react';
 interface OrderItem {
   id: string
   quantity: number
@@ -46,6 +46,7 @@ export default function OrderConfirmationPage() {
   const params = useParams()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
+  const { data: session } = useSession();
 
   useEffect(() => {
     if (params.id) {
@@ -54,15 +55,10 @@ export default function OrderConfirmationPage() {
   }, [params.id])
 
   const fetchOrder = async (orderId: string) => {
-    const token = localStorage.getItem("token")
-    if (!token) return
+    if (!session) return
 
     try {
-      const response = await fetch(`/api/shopping/orders/${orderId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const response = await fetch(`/api/shopping/orders/${orderId}`)
 
       if (response.ok) {
         const data = await response.json()

@@ -94,12 +94,11 @@ export default function AdvertisementForm({ advertisement, onSuccess, onCancel }
       
       const method = advertisement ? 'PUT' : 'POST';
 
-      const token = localStorage.getItem('token');
+      // NextAuth automatically handles authentication via cookies
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           ...formData,

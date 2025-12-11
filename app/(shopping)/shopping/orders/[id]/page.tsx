@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { useSession } from "next-auth/react"
 
 interface OrderItem {
   id: string
@@ -71,6 +72,7 @@ const statusConfig = {
 
 export default function OrderDetailPage() {
   const params = useParams()
+  const { data: session } = useSession()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -81,18 +83,13 @@ export default function OrderDetailPage() {
   }, [params.id])
 
   const fetchOrder = async (orderId: string) => {
-    const token = localStorage.getItem("token")
-    if (!token) {
+    if (!session) {
       window.location.href = "/auth/login"
       return
     }
 
     try {
-      const response = await fetch(`/api/shopping/orders/${orderId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const response = await fetch(`/api/shopping/orders/${orderId}`)
 
       if (response.ok) {
         const data = await response.json()

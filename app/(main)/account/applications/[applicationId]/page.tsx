@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { 
   ArrowLeft, 
   FileText, 
@@ -94,6 +95,7 @@ interface ApplicationDetail {
 
 export default function ApplicationDetailPage() {
   const params = useParams();
+  const { data: session } = useSession();
   const applicationId = params.applicationId as string;
   const [application, setApplication] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,9 +103,8 @@ export default function ApplicationDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchApplication = async () => {
-    const token = localStorage.getItem('token');
     
-    if (!token) {
+    if (!session) {
       setError('Unauthorized. Please login.');
       setLoading(false);
       return;
@@ -114,7 +115,6 @@ export default function ApplicationDetailPage() {
       const response = await fetch(`/api/applications/${applicationId}`, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
       });
 

@@ -15,6 +15,7 @@ import EnhancedProductCard from "@/components/shopping/EnhancedProductCard"
 import MobileProductCard from "@/components/shopping/MobileProductCard"
 import ProductPagination from "@/components/shopping/ProductPagination"
 import QuickSearch from "@/components/shopping/QuickSearch"
+import { useSession } from "next-auth/react"
 
 interface Product {
   id: string
@@ -56,6 +57,7 @@ function ProductsPageContent() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [wishlist, setWishlist] = useState<string[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const { data: session } = useSession()
 
   // Filter states
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
@@ -133,8 +135,7 @@ function ProductsPageContent() {
   }
 
   const toggleWishlist = async (productId: string) => {
-    const token = localStorage.getItem("token")
-    if (!token) {
+    if (!session) {
       const newWishlist = wishlist.includes(productId)
         ? wishlist.filter((id) => id !== productId)
         : [...wishlist, productId]
@@ -147,7 +148,6 @@ function ProductsPageContent() {
       if (wishlist.includes(productId)) {
         await fetch(`/api/shopping/wishlist?shoppingId=${productId}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
         })
         setWishlist((prev) => prev.filter((id) => id !== productId))
         toast.success("Removed from wishlist")
@@ -156,7 +156,6 @@ function ProductsPageContent() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ shoppingId: productId }),
         })
@@ -170,8 +169,7 @@ function ProductsPageContent() {
   }
 
   const addToCart = async (productId: string) => {
-    const token = localStorage.getItem("token")
-    if (!token) {
+    if (!session) {
       window.location.href = "/auth/login"
       return
     }
@@ -181,7 +179,6 @@ function ProductsPageContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ shoppingId: productId, quantity: 1 }),
       })
