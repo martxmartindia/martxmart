@@ -94,11 +94,6 @@ export default function AuthorLoginPage() {
                 className="w-20 h-20 object-contain"
               />
             </Link>
-            <div className="flex justify-center mb-4">
-              <div className="bg-green-100 p-3 rounded-full">
-                <PenTool className="w-8 h-8 text-green-600" />
-              </div>
-            </div>
             <CardTitle className="text-3xl font-bold text-gray-900">
               Author Login
             </CardTitle>

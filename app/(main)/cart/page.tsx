@@ -45,7 +45,7 @@ export default function CartPage() {
   }
 
   const calculateSubtotal = () => {
-    return items.reduce((total, item) => total + item.price * (item.quantity || 1), 0)
+    return items.reduce((total, item) => total + Number(item.price || 0) * (item.quantity || 1), 0)
   }
 
   const calculateTotal = () => {
@@ -149,12 +149,12 @@ export default function CartPage() {
                                     {item.name}
                                   </Link>
                                   <p className="text-gray-600 text-sm mt-1">
-                                    Unit Price: ₹{item.price.toLocaleString()}
+                                    Unit Price: ₹{Number(item.price || 0).toLocaleString()}
                                   </p>
                                 </div>
                                 <div className="mt-2 sm:mt-0 text-right">
                                   <p className="text-lg font-bold text-orange-600">
-                                    ₹{(item.price * (item.quantity || 1)).toLocaleString()}
+                                    ₹{(Number(item.price || 0) * (item.quantity || 1)).toLocaleString()}
                                   </p>
                                 </div>
                               </div>
@@ -222,7 +222,7 @@ export default function CartPage() {
                             Remove
                           </button>
                         </span>
-                        <span className="font-medium">-₹{appliedCoupon.discountAmount.toLocaleString()}</span>
+                        <span className="font-medium">-₹{Number(appliedCoupon.discountAmount || 0).toLocaleString()}</span>
                       </div>
                     )}
                     <Separator />

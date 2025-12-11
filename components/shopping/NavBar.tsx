@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import { useAuth } from "@/store/auth";
 import { useShopping } from "@/store/shopping";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
 export function Navbar() {
@@ -27,6 +28,20 @@ export function Navbar() {
   const { user, logout } = useAuth();
   const { cartCount, wishlistCount } = useShopping();
   const [location, setLocation] = useState("");
+  const { data: session } = useSession();
+  const [guestCartCount, setGuestCartCount] = useState(0);
+
+  // Get guest cart count
+  useEffect(() => {
+    if (!session) {
+      const guestCart = JSON.parse(localStorage.getItem('guestCart') || '[]');
+      const count = guestCart.reduce((total: number, item: any) => total + item.quantity, 0);
+      setGuestCartCount(count);
+    }
+  }, [session]);
+
+  // Total cart count (authenticated + guest)
+  const totalCartCount = session ? cartCount : guestCartCount;
 
 
 
@@ -129,9 +144,9 @@ export function Navbar() {
             <Link href="/shopping/cart" className="relative">
               <Button variant="ghost" size="icon">
                 <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
+                {totalCartCount > 0 && (
                   <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                    {cartCount}
+                    {totalCartCount}
                   </Badge>
                 )}
               </Button>

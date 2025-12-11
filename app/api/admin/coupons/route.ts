@@ -16,24 +16,27 @@ export async function GET(req: Request) {
     const search = searchParams.get("search") || "";
     const isActive = searchParams.get("isActive");
 
+    // Build where clause for filtering
+    const whereClause: any = {
+      isDeleted: false,
+      code: { contains: search, mode: 'insensitive' }
+    };
+
+    // Only add isActive filter if it's not empty string
+    if (isActive !== null && isActive !== "") {
+      whereClause.isActive = isActive === "true";
+    }
+
     const [coupons, total] = await Promise.all([
       prisma.coupon.findMany({
-        where: {
-          isDeleted: false,
-          code: { contains: search, mode: 'insensitive' },
-          ...(isActive !== null && { isActive: isActive === "true" })
-        },
+        where: whereClause,
         skip: (page - 1) * limit,
         take: limit,
         include: { admin: { select: { name: true, email: true } } },
         orderBy: { createdAt: "desc" }
       }),
       prisma.coupon.count({
-        where: {
-          isDeleted: false,
-          code: { contains: search, mode: 'insensitive' },
-          ...(isActive !== null && { isActive: isActive === "true" })
-        }
+        where: whereClause
       })
     ]);
 

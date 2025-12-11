@@ -3,11 +3,11 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { code, cartTotal } = await req.json();
+    const { code, cartTotal, userId } = await req.json();
 
     if (!code) {
       return NextResponse.json({ 
-        valid: false, 
+        success: false,
         message: "Coupon code is required" 
       }, { status: 400 });
     }
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
     if (!coupon) {
       return NextResponse.json({ 
-        valid: false, 
+        success: false,
         message: "Invalid or expired coupon code" 
       }, { status: 404 });
     }
@@ -34,22 +34,25 @@ export async function POST(req: Request) {
     const discountAmount = cartTotal ? (cartTotal * coupon.discount) / 100 : 0;
     const finalAmount = cartTotal ? cartTotal - discountAmount : 0;
 
+    // Here you could add logic to track coupon usage by user
+    // For now, just return the calculation results
+    
     return NextResponse.json({
-      valid: true,
+      success: true,
       coupon: {
         id: coupon.id,
         code: coupon.code,
         discount: coupon.discount,
         discountAmount: discountAmount,
         finalAmount: finalAmount,
-        expiresAt: coupon.expiresAt
+        originalAmount: cartTotal
       },
       message: "Coupon applied successfully"
     });
   } catch (error) {
-    console.error("Error validating coupon:", error);
+    console.error("Error applying coupon:", error);
     return NextResponse.json({ 
-      valid: false,
+      success: false,
       message: "Internal Server Error" 
     }, { status: 500 });
   }

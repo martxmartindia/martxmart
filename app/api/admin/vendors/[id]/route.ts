@@ -26,6 +26,7 @@ export async function GET(request: NextRequest,
             name: true,
             email: true,
             role: true,
+            phone: true,
           },
         },
       },
@@ -69,29 +70,67 @@ export async function PATCH(req: NextRequest,
       return NextResponse.json({ error: "Vendor not found" }, { status: 404 })
     }
 
-    // Update vendor
+    // Update vendor profile fields (using correct schema field names)
+    const vendorUpdateData: any = {}
+    if (data.businessName !== undefined) vendorUpdateData.businessName = data.businessName
+    if (data.panNumber !== undefined) vendorUpdateData.panNumber = data.panNumber
+    if (data.businessType !== undefined) vendorUpdateData.businessType = data.businessType
+    if (data.gstin !== undefined) vendorUpdateData.gstNumber = data.gstin // Fixed: gstNumber not gstin
+    if (data.status !== undefined) {
+      vendorUpdateData.status = data.status.toUpperCase()
+      vendorUpdateData.isVerified = data.status.toUpperCase() === "ACTIVE" // Fixed: ACTIVE not APPROVED
+    }
+
     const vendor = await prisma.vendorProfile.update({
       where: { id },
-      data: {
-        businessName: data.businessName,
-        panNumber: data.panNumber,
-        // status: data.status,
-        isVerified: data.status === "APPROVED"
-      },
+      data: vendorUpdateData,
     })
 
-    // If status is changed to APPROVED, update user role to VENDOR
-    if (data.status === "APPROVED" && !existingVendor.isVerified) {
+    // Update user profile fields if provided
+    const userUpdateData: any = {}
+    if (data.name !== undefined) userUpdateData.name = data.name
+    if (data.email !== undefined) userUpdateData.email = data.email
+    if (data.phone !== undefined) userUpdateData.phone = data.phone
+
+    if (Object.keys(userUpdateData).length > 0) {
+      await prisma.user.update({
+        where: { id: existingVendor.userId },
+        data: userUpdateData,
+      })
+    }
+
+    // Handle role changes based on status (using correct enum values)
+    if (data.status.toUpperCase() === "ACTIVE" && !existingVendor.isVerified) {
       await prisma.user.update({
         where: { id: existingVendor.userId },
         data: { role: "VENDOR" },
       })
+    } else if (data.status.toUpperCase() !== "ACTIVE" && existingVendor.isVerified) {
+      await prisma.user.update({
+        where: { id: existingVendor.userId },
+        data: { role: "CUSTOMER" },
+      })
     }
 
-    return NextResponse.json({ vendor })
+    // Return updated vendor with user data
+    const updatedVendor = await prisma.vendorProfile.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            phone: true,
+          },
+        },
+      },
+    })
+
+    return NextResponse.json({ vendor: updatedVendor })
   } catch (error) {
     console.error("Error updating vendor:", error)
     return NextResponse.json({ error: "Failed to update vendor" }, { status: 500 })
   }
 }
-

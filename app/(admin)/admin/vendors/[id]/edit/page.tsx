@@ -56,7 +56,7 @@ export default function EditVendorPage() {
           phone: vendor.user.phone || "",
           businessName: vendor.businessName,
           businessType: vendor.businessType,
-          gstin: vendor.gstin || "",
+          gstin: vendor.gstNumber || "", // Fixed: gstNumber not gstin
           panNumber: vendor.panNumber || "",
         })
       } catch (error) {
@@ -75,7 +75,7 @@ export default function EditVendorPage() {
     try {
       setIsSubmitting(true)
       const response = await fetch(`/api/admin/vendors/${params.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       })

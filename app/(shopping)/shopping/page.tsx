@@ -142,7 +142,22 @@ const fetchHomeData = async () => {
   const addToCart = async (productId: string) => {
     if (!session) {
       // Redirect to login
-      window.location.href = '/auth/login';
+      // Handle guest cart using localStorage
+      const guestCart = JSON.parse(localStorage.getItem('guestCart') || '[]');
+      const existingItem = guestCart.find((item: any) => item.shoppingId === productId);
+      
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        guestCart.push({
+          shoppingId: productId,
+          quantity: 1,
+          addedAt: new Date().toISOString()
+        });
+      }
+      
+      localStorage.setItem('guestCart', JSON.stringify(guestCart));
+      toast.success('Added to cart! Login to save your cart.');
       return;
     }
 

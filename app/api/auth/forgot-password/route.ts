@@ -5,12 +5,22 @@ import { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/api-error";
 
 const forgotPasswordSchema = z.object({
-  phone: z.string().regex(/^\+?91[6-9]\d{9}$|^[6-9]\d{9}$/, "Invalid phone number format"),
+  phone: z.string().min(10, "Phone number is required and must be at least 10 digits").regex(/^\+?91[6-9]\d{9}$|^[6-9]\d{9}$/, "Invalid phone number format"),
 });
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    
+    // Check if body is valid JSON
+    if (!body || typeof body !== 'object') {
+      throw ApiError.badRequest("Invalid request body. Phone number is required.");
+    }
+    
+    // Validate phone field exists
+    if (!body.phone) {
+      throw ApiError.badRequest("Phone number is required.");
+    }
     const { phone } = forgotPasswordSchema.parse(body);
 
     // Clean phone number

@@ -369,7 +369,7 @@ export default function AdminFranchisesPage() {
                         <TableCell>
                           <div className="flex items-center">
                             <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />₹
-                            {franchise.revenue.toLocaleString()}
+{(franchise.revenue ?? 0).toLocaleString("en-IN")}
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(franchise.status, franchise.isActive)}</TableCell>

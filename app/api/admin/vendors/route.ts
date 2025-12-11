@@ -26,37 +26,48 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: "Invalid pagination parameters" }, { status: 400 });
     }
 
+    // Build where clause for vendorProfile status filtering
+    const vendorProfileWhere: any = {};
+    if (status) {
+      vendorProfileWhere.status = status.toUpperCase();
+    }
+
     const [vendors, total] = await Promise.all([
-      prisma.user.findMany({
+      prisma.vendorProfile.findMany({
         where: {
-          role: "VENDOR",
-          OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { email: { contains: search, mode: "insensitive" as const } },
-            { phone: { contains: search, mode: "insensitive" as const } }
-          ],
-          ...(status && { isVerified: status === "verified" })
+          ...(Object.keys(vendorProfileWhere).length > 0 && { status: vendorProfileWhere.status }),
+          OR: search ? [
+            { businessName: { contains: search, mode: "insensitive" as const } },
+            { user: { name: { contains: search, mode: "insensitive" as const } } },
+            { user: { email: { contains: search, mode: "insensitive" as const } } },
+            { user: { phone: { contains: search, mode: "insensitive" as const } } }
+          ] : undefined
         },
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          vendorProfile: {
-            include: {
-              documents: true,
-            }
-          }
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              role: true,
+            },
+          },
+          documents: true,
         },
         orderBy: { createdAt: "desc" }
       }),
-      prisma.user.count({
+      prisma.vendorProfile.count({
         where: {
-          role: "VENDOR",
-          OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { email: { contains: search, mode: "insensitive" as const } },
-            { phone: { contains: search, mode: "insensitive" as const } }
-          ],
-          ...(status && { isVerified: status === "verified" })
+          ...(Object.keys(vendorProfileWhere).length > 0 && { status: vendorProfileWhere.status }),
+          OR: search ? [
+            { businessName: { contains: search, mode: "insensitive" as const } },
+            { user: { name: { contains: search, mode: "insensitive" as const } } },
+            { user: { email: { contains: search, mode: "insensitive" as const } } },
+            { user: { phone: { contains: search, mode: "insensitive" as const } } }
+          ] : undefined
         }
       })
     ]);
@@ -77,7 +88,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function PUT(req: Request) {
+export async function POST(req: Request) {
   try {
     // Check authentication using NextAuth
     const session = await getServerSession(authOptions)
@@ -90,39 +101,82 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
-    const { id, isVerified, isDeleted } = await req.json();
-    
-    const vendor = await prisma.user.findUnique({
-      where: { id },
+    const { 
+      userId, 
+      businessName, 
+      businessType, 
+      gstin, 
+      panNumber, 
+      bankName,
+      accountNumber,
+      ifscCode,
+      status = "PENDING"
+    } = await req.json();
+
+    // Validate required fields
+    if (!userId || !businessName || !businessType) {
+      return NextResponse.json({ 
+        message: "Missing required fields: userId, businessName, businessType" 
+      }, { status: 400 });
+    }
+
+    // Check if user exists and is not already a vendor
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
       include: { vendorProfile: true }
     });
 
-    if (!vendor || vendor.role !== "VENDOR") {
-      return NextResponse.json({ message: "Vendor not found" }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    const updatedVendor = await prisma.user.update({
-      where: { id },
+    if (user.vendorProfile) {
+      return NextResponse.json({ message: "User already has a vendor profile" }, { status: 400 });
+    }
+
+    // Create vendor profile (using correct schema field names and enum values)
+    const vendorProfile = await prisma.vendorProfile.create({
       data: {
-        isVerified: isVerified !== undefined ? isVerified : vendor.isVerified,
-        isDeleted: isDeleted !== undefined ? isDeleted : vendor.isDeleted
+        userId,
+        businessName,
+        businessType,
+        gstNumber: gstin, // Fixed: gstNumber not gstin
+        panNumber,
+        bankName, // Fixed: use individual bank fields instead of bankDetails object
+        accountNumber,
+        ifscCode,
+        status: status.toUpperCase(), // Ensure uppercase for enum
+        isVerified: status.toUpperCase() === "ACTIVE" // Fixed: ACTIVE not APPROVED
       },
       include: {
-        vendorProfile: {
-          include: {
-            documents: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
           },
-        }
+        },
+        documents: true,
       }
     });
 
+    // If status is ACTIVE, update user role to VENDOR (using correct enum value)
+    if (status.toUpperCase() === "ACTIVE") {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: "VENDOR" }
+      });
+    }
+
     return NextResponse.json({
-      message: "Vendor updated successfully",
-      vendor: updatedVendor
-    });
+      message: "Vendor created successfully",
+      vendor: vendorProfile
+    }, { status: 201 });
 
   } catch (error) {
-    console.error("Error updating vendor:", error);
+    console.error("Error creating vendor:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }

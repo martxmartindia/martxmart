@@ -1,73 +1,114 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedUser, requireAuth } from "@/lib/auth-helpers";
+import { NextResponse } from "next/server";
 
-
-export async function GET(request: Request) {
-  // Try to get token from Authorization header first, then from cookies
+export async function GET(req: Request) {
   try {
-    const authResult = await requireAuth();
-    if (authResult instanceof NextResponse) return authResult;
+    const searchParams = new URL(req.url).searchParams;
+    const code = searchParams.get("code");
 
-    const users = await getAuthenticatedUser();
-    if (!users) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // If specific coupon code is requested, validate it
+    if (code) {
+      const coupon = await prisma.coupon.findFirst({
+        where: {
+          code: code.toUpperCase(),
+          isActive: true,
+          isDeleted: false,
+          expiresAt: {
+            gt: new Date() // Not expired
+          }
+        },
+        select: {
+          id: true,
+          code: true,
+          discount: true,
+          expiresAt: true
+        }
+      });
+
+      if (!coupon) {
+        return NextResponse.json({ 
+          valid: false, 
+          message: "Invalid or expired coupon code" 
+        }, { status: 404 });
+      }
+
+      return NextResponse.json({ 
+        valid: true, 
+        coupon 
+      });
     }
 
-    const userId = users.id;
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
+    // Otherwise, return all valid coupons for public display
     const coupons = await prisma.coupon.findMany({
-      where: { 
-        isActive: true, 
+      where: {
+        isActive: true,
         isDeleted: false,
         expiresAt: {
-          gt: new Date()
+          gt: new Date() // Not expired
         }
       },
       select: {
         id: true,
         code: true,
         discount: true,
-        expiresAt: true,
-        isActive: true,
+        expiresAt: true
       },
-      orderBy: {
-        createdAt: 'desc'
+      orderBy: { createdAt: "desc" },
+      take: 10 // Limit for public display
+    });
+
+    return NextResponse.json({ coupons });
+  } catch (error) {
+    console.error("Error fetching coupons:", error);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const { code, cartTotal } = await req.json();
+
+    if (!code) {
+      return NextResponse.json({ 
+        valid: false, 
+        message: "Coupon code is required" 
+      }, { status: 400 });
+    }
+
+    const coupon = await prisma.coupon.findFirst({
+      where: {
+        code: code.toUpperCase(),
+        isActive: true,
+        isDeleted: false,
+        expiresAt: {
+          gt: new Date() // Not expired
+        }
       }
     });
 
-    return NextResponse.json(coupons, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      }
+    if (!coupon) {
+      return NextResponse.json({ 
+        valid: false, 
+        message: "Invalid or expired coupon code" 
+      }, { status: 404 });
+    }
+
+    // Calculate discount amount
+    const discountAmount = (cartTotal * coupon.discount) / 100;
+    const finalAmount = cartTotal - discountAmount;
+
+    return NextResponse.json({
+      valid: true,
+      coupon: {
+        code: coupon.code,
+        discount: coupon.discount,
+        discountAmount: discountAmount,
+        finalAmount: finalAmount
+      },
+      message: "Coupon applied successfully"
     });
   } catch (error) {
-    console.error("Error fetching coupons:", error);
-    console.error("Error details:", {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined
-    });
-    return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : 'Unknown error' },
-      { 
-        status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        }
-      }
-    );
+    console.error("Error validating coupon:", error);
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }

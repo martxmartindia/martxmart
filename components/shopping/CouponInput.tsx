@@ -43,7 +43,7 @@ export function CouponInput({ cartTotal, onCouponApply, onCouponRemove, appliedC
         onCouponApply({
           code: data.coupon.code,
           discount: data.coupon.discount,
-          discountAmount: data.discountAmount,
+          discountAmount: data.coupon.discountAmount,
         })
         setCouponCode("")
       } else {
@@ -70,7 +70,7 @@ export function CouponInput({ cartTotal, onCouponApply, onCouponRemove, appliedC
             {appliedCoupon.code} ({appliedCoupon.discount}% off)
           </span>
           <Badge variant="secondary" className="text-green-700">
-            -₹{appliedCoupon.discountAmount.toFixed(2)}
+            -₹{Number(appliedCoupon.discountAmount || 0).toFixed(2)}
           </Badge>
         </div>
         <Button
