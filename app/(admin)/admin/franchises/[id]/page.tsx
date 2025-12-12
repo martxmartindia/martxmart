@@ -397,7 +397,7 @@ export default function FranchiseDetailPage() {
                         onChange={(e) => handleInputChange("initialFee", Number.parseFloat(e.target.value))}
                       />
                     ) : (
-                      <div className="p-2 border rounded-md bg-gray-50">₹{franchise.initialFee.toLocaleString()}</div>
+                      <div className="p-2 border rounded-md bg-gray-50">₹{(franchise.initialFee ?? 0).toLocaleString("en-IN")}</div>
                     )}
                   </div>
                 </div>
@@ -412,7 +412,7 @@ export default function FranchiseDetailPage() {
                       onChange={(e) => handleInputChange("renewalFee", Number.parseFloat(e.target.value))}
                     />
                   ) : (
-                    <div className="p-2 border rounded-md bg-gray-50">₹{franchise.renewalFee.toLocaleString()}</div>
+                    <div className="p-2 border rounded-md bg-gray-50">₹{(franchise.renewalFee ?? 0).toLocaleString("en-IN")}</div>
                   )}
                 </div>
 

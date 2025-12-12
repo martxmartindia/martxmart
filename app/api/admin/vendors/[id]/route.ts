@@ -11,28 +11,49 @@ export async function GET(request: NextRequest,
     // Check authentication
     const session = await getServerSession(authOptions)
 
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-
-    // Get vendor
-    const vendor = await prisma.vendorProfile.findUnique({
-      where: { id },
+    // Get vendor by user ID (since frontend passes user ID)
+    const vendor = await prisma.vendorProfile.findFirst({
+      where: { userId: id },
       include: {
         user: {
           select: {
             id: true,
             name: true,
             email: true,
+            phone: true,
             role: true,
           },
         },
+        documents: true,
       },
     })
 
     if (!vendor) {
-      return NextResponse.json({ error: "Vendor not found" }, { status: 404 })
+      // Check if user exists at all
+      const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+        }
+      })
+      
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
+      }
+      
+      // User exists but no vendor profile - this is valid for potential vendors
+      return NextResponse.json({
+        error: "Vendor profile not found. Please create a vendor profile first.",
+        user: user
+      }, { status: 404 })
     }
 
     return NextResponse.json({ vendor })
@@ -57,33 +78,104 @@ export async function PATCH(req: NextRequest,
     // Get request body
     const data = await req.json()
 
-    // Get vendor to check if it exists
-    const existingVendor = await prisma.vendorProfile.findUnique({
-      where: { id },
+    // Get vendor by user ID (since frontend passes user ID)
+    const existingVendor = await prisma.vendorProfile.findFirst({
+      where: { userId: id },
       include: {
         user: true,
       },
     })
 
-    if (!existingVendor) {
-      return NextResponse.json({ error: "Vendor not found" }, { status: 404 })
+    // Update or create vendor profile
+    let vendor;
+    
+    if (existingVendor) {
+      // Update existing vendor profile
+      vendor = await prisma.vendorProfile.update({
+        where: { id: existingVendor.id },
+        data: {
+          businessName: data.businessName,
+          businessType: data.businessType,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
+          phone: data.phone,
+          email: data.email,
+          website: data.website,
+          gstNumber: data.gstNumber,
+          panNumber: data.panNumber,
+          bankName: data.bankName,
+          accountNumber: data.accountNumber,
+          ifscCode: data.ifscCode,
+          category: data.category,
+          experience: data.experience,
+          annualTurnover: data.annualTurnover,
+          employeeCount: data.employeeCount,
+          certifications: data.certifications || [],
+          specializations: data.specializations || [],
+          serviceAreas: data.serviceAreas || [],
+          // status: data.status,
+          isVerified: data.status === "APPROVED"
+        },
+        include: {
+          user: true,
+          documents: true,
+        }
+      });
+    } else {
+      // Create new vendor profile
+      vendor = await prisma.vendorProfile.create({
+        data: {
+          userId: id,
+          businessName: data.businessName,
+          businessType: data.businessType,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
+          phone: data.phone,
+          email: data.email,
+          website: data.website,
+          gstNumber: data.gstNumber,
+          panNumber: data.panNumber,
+          bankName: data.bankName,
+          accountNumber: data.accountNumber,
+          ifscCode: data.ifscCode,
+          category: data.category,
+          experience: data.experience,
+          annualTurnover: data.annualTurnover,
+          employeeCount: data.employeeCount,
+          certifications: data.certifications || [],
+          specializations: data.specializations || [],
+          serviceAreas: data.serviceAreas || [],
+          status: data.status || "PENDING",
+          isVerified: data.status === "APPROVED",
+          isActive: true
+        },
+        include: {
+          user: true,
+          documents: true,
+        }
+      });
     }
 
-    // Update vendor
-    const vendor = await prisma.vendorProfile.update({
-      where: { id },
-      data: {
-        businessName: data.businessName,
-        panNumber: data.panNumber,
-        // status: data.status,
-        isVerified: data.status === "APPROVED"
-      },
-    })
+    // Update user information if provided
+    if (data.name || data.email || data.phone) {
+      await prisma.user.update({
+        where: { id },
+        data: {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+        },
+      })
+    }
 
     // If status is changed to APPROVED, update user role to VENDOR
-    if (data.status === "APPROVED" && !existingVendor.isVerified) {
+    if (data.status === "APPROVED" && (!existingVendor || !existingVendor.isVerified)) {
       await prisma.user.update({
-        where: { id: existingVendor.userId },
+        where: { id },
         data: { role: "VENDOR" },
       })
     }
