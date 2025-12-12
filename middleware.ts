@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 
 // Define role-based access rules
 const roleAccessMap = {
-  // Admin routes
-  "/admin": ["ADMIN"],
+  // Admin routes - more specific to avoid conflicts
+  "/admin/dashboard": ["ADMIN"],
+  "/admin/profile": ["ADMIN"],
   "/api/admin": ["ADMIN"],
   
-  // Author routes  
+  // Author routes
   "/author": ["AUTHOR"],
   "/api/author": ["AUTHOR"],
   
@@ -30,68 +31,14 @@ const roleAccessMap = {
   "/api/orders": ["CUSTOMER", "ADMIN", "AUTHOR", "FRANCHISE"],
 };
 
-// Define which roles can access specific auth login pages
-const authLoginAccess = {
-  "/auth/admin/login": ["ADMIN"],
-  "/auth/author/login": ["AUTHOR"],
-  "/auth/franchise/login": ["FRANCHISE"],
-  "/auth/vendor/login": ["VENDOR"],
-  "/auth/login": ["CUSTOMER", "ADMIN", "AUTHOR", "FRANCHISE", "VENDOR"], // Default login for customers
-};
-
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const { pathname } = req.nextUrl;
     const userRole = token?.role as string;
 
-    // Role-based auth login page protection
-    // Check if user is trying to access an auth login page without proper role
-    const authLoginRules = Object.entries(authLoginAccess).find(([path]) => {
-      return pathname.startsWith(path);
-    });
-
-    if (authLoginRules) {
-      const [, allowedRoles] = authLoginRules;
-      
-      // Only redirect if user is authenticated AND doesn't have the right role for this auth page
-      // This allows users to access their own login page even when authenticated
-      if (userRole && !allowedRoles.includes(userRole)) {
-        // Check if this is the user's own login page - don't redirect if it is
-        let isOwnLoginPage = false;
-        if (userRole === "ADMIN" && pathname.startsWith("/auth/admin/login")) {
-          isOwnLoginPage = true;
-        } else if (userRole === "AUTHOR" && pathname.startsWith("/auth/author/login")) {
-          isOwnLoginPage = true;
-        } else if (userRole === "FRANCHISE" && pathname.startsWith("/auth/franchise/login")) {
-          isOwnLoginPage = true;
-        } else if (userRole === "VENDOR" && pathname.startsWith("/auth/vendor/login")) {
-          isOwnLoginPage = true;
-        } else if (userRole === "CUSTOMER" && pathname.startsWith("/auth/login")) {
-          isOwnLoginPage = true;
-        }
-        
-        // Only redirect if it's NOT their own login page
-        if (!isOwnLoginPage) {
-          // Redirect to appropriate login page based on user's actual role
-          let redirectUrl = "/auth/login"; // Default fallback
-          
-          if (userRole === "ADMIN") {
-            redirectUrl = "/auth/admin/login";
-          } else if (userRole === "AUTHOR") {
-            redirectUrl = "/auth/author/login";
-          } else if (userRole === "FRANCHISE") {
-            redirectUrl = "/auth/franchise/login";
-          } else if (userRole === "VENDOR") {
-            redirectUrl = "/auth/vendor/login";
-          } else if (userRole === "CUSTOMER") {
-            redirectUrl = "/auth/login";
-          }
-
-          return NextResponse.redirect(new URL(redirectUrl, req.url));
-        }
-      }
-    }
+    // Debug logging for route checking
+    console.log("🔍 [Middleware] Processing route:", pathname, "Role:", userRole);
 
     // Check if the current path requires specific roles
     const pathRules = Object.entries(roleAccessMap).find(([path]) => {
@@ -100,9 +47,11 @@ export default withAuth(
 
     if (pathRules) {
       const [, allowedRoles] = pathRules;
+      console.log("🔍 [Middleware] Route requires roles:", allowedRoles, "User has:", userRole);
 
       // Check if user has required role
       if (!userRole || !allowedRoles.includes(userRole)) {
+        console.log("🚫 [Middleware] User doesn't have required role, redirecting");
         // Redirect to appropriate login page based on role
         let redirectUrl = "/auth/login";
         
@@ -117,6 +66,8 @@ export default withAuth(
         }
 
         return NextResponse.redirect(new URL(redirectUrl, req.url));
+      } else {
+        console.log("✅ [Middleware] User has required role, allowing access");
       }
     }
 

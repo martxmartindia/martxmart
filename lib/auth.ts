@@ -736,7 +736,17 @@ export const authOptions: NextAuthOptions = {
     },
     async redirect({ url, baseUrl }) {
       // Handle role-based redirects after successful login
-      if (url.startsWith("/")) {
+      if (url.startsWith("/admin")) {
+        return baseUrl + "/admin";
+      } else if (url.startsWith("/author")) {
+        return baseUrl + "/author";
+      } else if (url.startsWith("/vendor-portal")) {
+        return baseUrl + "/vendor-portal";
+      } else if (url.startsWith("/franchise")) {
+        return baseUrl + "/franchise";
+      } else if (url.startsWith("/account")) {
+        return baseUrl + "/account";
+      } else if (url.startsWith("/")) {
         return baseUrl + url;
       } else if (url.startsWith("http")) {
         return url;

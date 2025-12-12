@@ -23,9 +23,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const isAdmin = session?.user?.role === 'ADMIN';
 
   useEffect(() => {
-    // Redirect to login if not authenticated or not admin
-    if (!isLoading && (!isAuthenticated || !isAdmin)) {
-      toast.error('You do not have permission to access the admin panel');
+    // Debug logging to understand session state
+    console.log("🔍 [AdminLayout] Session state:", {
+      status,
+      isLoading,
+      isAuthenticated,
+      isAdmin,
+      userRole: session?.user?.role,
+      hasSession: !!session,
+      hasUser: !!session?.user
+    });
+
+    // Only redirect if we're sure the user is not an admin
+    // Wait for session to be fully loaded and authenticated
+    if (!isLoading && isAuthenticated) {
+      if (!isAdmin) {
+        console.log("🚫 [AdminLayout] User is not admin, redirecting to login");
+        toast.error('You do not have permission to access the admin panel');
+        router.push('/auth/admin/login?callbackUrl=/admin');
+      } else {
+        console.log("✅ [AdminLayout] User is admin, allowing access");
+      }
+    } else if (!isLoading && !isAuthenticated) {
+      console.log("🚫 [AdminLayout] User is not authenticated, redirecting to login");
+      toast.error('Please log in to access the admin panel');
       router.push('/auth/admin/login?callbackUrl=/admin');
     }
 
@@ -40,7 +61,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [router, isAuthenticated, isAdmin, isLoading]);
+  }, [router, isAuthenticated, isAdmin, isLoading, status, session]);
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/auth/admin/login' });

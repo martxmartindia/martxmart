@@ -125,21 +125,32 @@ export default function AdminDashboardPage() {
   }
 
   useEffect(() => {
-    // Check authentication and admin role
+    // Check authentication and admin role - but don't redirect if we're still loading
     if (status === 'loading') {
-      return // Still loading
+      return // Still loading session
     }
     
+    console.log("🔍 [AdminPage] Session check:", {
+      status,
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userRole: session?.user?.role,
+      isAdmin: session?.user?.role === 'ADMIN'
+    });
+    
     if (!session?.user) {
-      router.push('/auth/login')
+      console.log("🚫 [AdminPage] No session user, redirecting to login");
+      router.push('/auth/admin/login?callbackUrl=/admin')
       return
     }
     
     if (session.user.role !== 'ADMIN') {
+      console.log("🚫 [AdminPage] User is not admin:", session.user.role, "redirecting to home");
       router.push('/')
       return
     }
     
+    console.log("✅ [AdminPage] User is admin, fetching dashboard data");
     // User is authenticated admin, fetch dashboard data
     fetchDashboardData()
   }, [session, status, router, timeRange])
