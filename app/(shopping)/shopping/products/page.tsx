@@ -86,10 +86,15 @@ function ProductsPageContent() {
 
       // Add search params
       const search = searchParams.get("search")
-      const category = searchParams.get("category")
+      const categorySlug = searchParams.get("category")
 
       if (search) params.append("search", search)
-      if (category) params.append("category", category)
+      if (categorySlug) {
+        const category = filters.categories.find(c => c.slug === categorySlug)
+        if (category) {
+          params.append("category", category.id)
+        }
+      }
 
       // Add filter params
       selectedBrands.forEach((brand) => params.append("brand", brand))
@@ -117,6 +122,14 @@ function ProductsPageContent() {
         // Update price range if not set
         if (priceRange[0] === 0 && priceRange[1] === 10000) {
           setPriceRange([data.filters.priceRange.min, data.filters.priceRange.max])
+        }
+
+        // Handle URL category parameter
+        if (categorySlug) {
+          const category = data.filters.categories.find((c: any) => c.slug === categorySlug)
+          if (category) {
+            setSelectedCategories([category.id])
+          }
         }
       }
     } catch (error) {
@@ -210,7 +223,6 @@ function ProductsPageContent() {
     (minRating > 0 ? 1 : 0) + 
     (inStock ? 1 : 0) + 
     (onSale ? 1 : 0)
-
 
 
 

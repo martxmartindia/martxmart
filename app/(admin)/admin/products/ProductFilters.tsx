@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Filter } from "lucide-react";
+import { X, Filter, ChevronRight } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -19,14 +19,24 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 
+interface HierarchicalCategory {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  parentId?: string;
+  children: HierarchicalCategory[];
+}
+
 interface ProductFiltersProps {
   onFiltersChange: (filters: any) => void;
-  categories: any[];
+  categories: HierarchicalCategory[];
   filters: any;
 }
 
 export default function ProductFilters({ onFiltersChange, categories, filters }: ProductFiltersProps) {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const active = Object.entries(filters)
@@ -53,10 +63,20 @@ export default function ProductFilters({ onFiltersChange, categories, filters }:
     });
   };
 
+  const toggleCategory = (categoryId: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoryId)) {
+      newExpanded.delete(categoryId);
+    } else {
+      newExpanded.add(categoryId);
+    }
+    setExpandedCategories(newExpanded);
+  };
+
   const getFilterLabel = (key: string, value: string) => {
     switch (key) {
       case 'category':
-        const category = categories.find(c => c.id === value);
+        const category = findCategoryById(categories, value);
         return `Category: ${category?.name || value}`;
       case 'featured':
         return `Featured: ${value === 'true' ? 'Yes' : 'No'}`;
@@ -69,6 +89,63 @@ export default function ProductFilters({ onFiltersChange, categories, filters }:
       default:
         return `${key}: ${value}`;
     }
+  };
+
+  const findCategoryById = (categories: HierarchicalCategory[], id: string): HierarchicalCategory | undefined => {
+    for (const category of categories) {
+      if (category.id === id) {
+        return category;
+      }
+      if (category.children) {
+        const found = findCategoryById(category.children, id);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  const renderCategory = (category: HierarchicalCategory, level = 0) => {
+    const hasChildren = category.children && category.children.length > 0;
+    const isExpanded = expandedCategories.has(category.id);
+    const isSelected = filters.category === category.id;
+
+    return (
+      <div key={category.id} className={level > 0 ? 'ml-4' : ''}>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center space-x-2 cursor-pointer py-1">
+            <input
+              type="radio"
+              name="category"
+              value={category.id}
+              checked={isSelected}
+              onChange={(e) => handleFilterChange('category', e.target.value)}
+              className="text-orange-600"
+            />
+            <span className="text-sm text-gray-700">{category.name}</span>
+          </label>
+          {hasChildren && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => toggleCategory(category.id)}
+            >
+              <ChevronRight 
+                className={`h-3 w-3 transition-transform ${
+                  isExpanded ? 'rotate-90' : ''
+                }`} 
+              />
+            </Button>
+          )}
+        </div>
+        
+        {hasChildren && isExpanded && (
+          <div className="ml-2 border-l border-gray-200 pl-2">
+            {category.children.map(child => renderCategory(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -107,19 +184,22 @@ export default function ProductFilters({ onFiltersChange, categories, filters }:
               <div className="space-y-3">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Category</label>
-                  <Select value={filters.category} onValueChange={(value) => handleFilterChange('category', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All categories</SelectItem>
-                      {categories.filter(cat => cat.id && cat.id.trim() !== '').map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="max-h-48 overflow-y-auto border rounded-md p-2">
+                    <label className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="radio"
+                        name="category"
+                        value="all"
+                        checked={filters.category === 'all'}
+                        onChange={(e) => handleFilterChange('category', e.target.value)}
+                        className="text-orange-600"
+                      />
+                      <span className="text-sm text-gray-700 font-medium">All Categories</span>
+                    </label>
+                    {categories.filter(cat => cat.id && cat.id.trim() !== '').map((category) => 
+                      renderCategory(category)
+                    )}
+                  </div>
                 </div>
 
                 <div>

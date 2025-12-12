@@ -302,7 +302,7 @@ export default function CategoryPage() {
 
       <CardContent className="p-4 space-y-3">
         <div>
-          <Link href={`/shopping/product/${product.id}`}>
+          <Link href={`/shopping/products/${product.id}`}>
             <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-2 cursor-pointer text-sm leading-tight">
               {product.name}
             </h3>

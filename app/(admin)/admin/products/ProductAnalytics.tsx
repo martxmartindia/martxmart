@@ -95,10 +95,10 @@ export default function ProductAnalytics({ className }: ProductAnalyticsProps) {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{analytics.averagePrice.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Range: ₹{analytics.priceRange.min} - ₹{analytics.priceRange.max.toLocaleString()}
-            </p>
+            <div className="text-2xl font-bold">₹{(analytics.averagePrice ?? 0) .toLocaleString("en-IN")}</div>
+            {/* <p className="text-xs text-muted-foreground">
+              Range: ₹{(analytics.priceRange.min ?? 0).toLocaleString("en-IN")} - ₹{(analytics.priceRange.max ?? 0).toLocaleString("en-IN")}
+            </p> */}
           </CardContent>
         </Card>
       </div>

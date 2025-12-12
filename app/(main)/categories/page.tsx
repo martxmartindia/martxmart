@@ -168,7 +168,7 @@ export default function CategoriesPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: index * 0.1 }}
                     >
-                      <Link href={`/products?category=${category.id}`}>
+                      <Link href={`/categories/${category.id}`}>
                         <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300 group cursor-pointer border-0 shadow-lg hover:-translate-y-1">
                           <div className="relative aspect-[4/3] overflow-hidden">
                             <Image

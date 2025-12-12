@@ -390,7 +390,16 @@ function EnhancedProductsTable({
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 px-4">{product.category.name}</td>
+                  <td className="py-3 px-4">
+                    <div className="text-sm">
+                      <div className="font-medium">{product.category.name}</div>
+                      {product.category.parent && (
+                        <div className="text-xs text-gray-500">
+                          → {product.category.parent.name}
+                        </div>
+                      )}
+                    </div>
+                  </td>
                   <td className="py-3 px-4">
                     <div className="text-sm">
                       <div className="font-medium">{product.hsnCode || 'N/A'}</div>

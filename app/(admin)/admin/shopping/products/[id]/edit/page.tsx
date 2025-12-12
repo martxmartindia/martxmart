@@ -63,7 +63,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories?type=SHOP');
+      const response = await fetch('/api/categories?type=SHOP&flatList=true');
       if (response.ok) {
         const data = await response.json();
         setCategories(data || []);

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ChevronRight, ArrowLeft, Grid3X3, Package, Search } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Grid3X3, Package, Search, ShoppingCart, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -244,7 +244,7 @@ const CategoryDetailPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
           >
             {filteredSubcategories.map((subcategory, index) => (
               <motion.div
@@ -252,8 +252,10 @@ const CategoryDetailPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
+                className="space-y-3"
               >
-                <Link href={`/products?category=${subcategory.id}`}>
+                {/* Subcategory Card */}
+                <Link href={`/categories/${id}/subcategory-products?subcategory=${subcategory.id}`}>
                   <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-1 cursor-pointer">
                     <div className="relative aspect-square overflow-hidden bg-gray-50">
                       <Image
@@ -296,6 +298,31 @@ const CategoryDetailPage = () => {
                     </CardContent>
                   </Card>
                 </Link>
+                
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 text-xs"
+                  >
+                    <Link href={`/categories/${id}/subcategory-products?subcategory=${subcategory.id}`}>
+                      <Eye className="h-3 w-3 mr-1" />
+                      View All
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="flex-1 text-xs bg-orange-600 hover:bg-orange-700"
+                  >
+                    <Link href={`/categories/${id}/subcategory-products?subcategory=${subcategory.id}`}>
+                      <ShoppingCart className="h-3 w-3 mr-1" />
+                      Shop Now
+                    </Link>
+                  </Button>
+                </div>
               </motion.div>
             ))}
           </motion.div>

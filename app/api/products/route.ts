@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         { description: { contains: search, mode: 'insensitive' } },
         { brand: { contains: search, mode: 'insensitive' } },
         { category: { name: { contains: search, mode: 'insensitive' } } },
+        { category: { parent: { name: { contains: search, mode: 'insensitive' } } } },
       ];
     }
 
@@ -40,25 +41,66 @@ export async function GET(request: NextRequest) {
       if (maxPrice) whereConditions.price.lte = parseFloat(maxPrice);
     }
 
-    // Category filter for both Product and Shopping
+    // Enhanced hierarchical category filter - Support main categories, subcategories, and deep subcategories
     const categoryFilter = category && category !== 'all' 
-      ? { category: { name: { contains: category, mode: 'insensitive' } } }
+      ? { 
+          OR: [
+            { categoryId: category },
+            { category: { parentId: category } },
+            { category: { parent: { parentId: category } } },
+            { category: { parent: { parent: { parentId: category } } } }
+          ]
+        }
       : {};
 
-    // Fetch only from Product table
-    const [products, categories] = await Promise.all([
+    // Fetch products with hierarchical category information and all categories for filtering
+    const [products, categories, allCategories] = await Promise.all([
       prisma.product.findMany({
         where: { ...whereConditions, ...categoryFilter },
-        include: { category: true },
+        include: { 
+          category: {
+            include: {
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                  slug: true
+                }
+              }
+            }
+          }
+        },
         orderBy: getSortOrder(sortBy),
       }),
-      prisma.category.findMany({ select: { name: true } })
+      // Get main categories (parentId = null)
+      prisma.category.findMany({ 
+        where: { parentId: null },
+        select: { 
+          id: true, 
+          name: true,
+          type: true,
+          slug: true
+        },
+        orderBy: { name: 'asc' }
+      }),
+      // Get all categories for hierarchical filtering
+      prisma.category.findMany({
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          type: true,
+          parentId: true
+        },
+        orderBy: { name: 'asc' }
+      })
     ]);
 
     console.log('Database query returned:', products.length, 'products for search:', search);
 
-    // Transform products
-    const allProducts = products.map(transformProduct);
+    // Transform products with hierarchical category information
+    const allProducts = products.map(transformProductWithHierarchy);
 
     // Apply pagination
     const startIndex = (page - 1) * limit;
@@ -67,6 +109,9 @@ export async function GET(request: NextRequest) {
     // Get unique brands
     const brands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))];
 
+    // Build hierarchical categories structure
+    const hierarchicalCategories = buildHierarchicalCategories(allCategories);
+
     return NextResponse.json({
       products: paginatedProducts,
       total: allProducts.length,
@@ -74,7 +119,13 @@ export async function GET(request: NextRequest) {
       limit,
       totalPages: Math.ceil(allProducts.length / limit),
       filters: {
-        categories: categories.map(c => ({ id: c.name, name: c.name })),
+        categories: hierarchicalCategories,
+        mainCategories: categories.map(c => ({ 
+          id: c.id, 
+          name: c.name,
+          type: c.type,
+          slug: c.slug 
+        })),
         brands,
       },
     });
@@ -101,14 +152,25 @@ function getSortOrder(sortBy: string) {
   }
 }
 
-function transformProduct(product: any) {
+function transformProductWithHierarchy(product: any): any {
   return {
     id: product.id,
     name: product.name,
     price: Number(product.price),
     originalPrice: product.originalPrice ? Number(product.originalPrice) : null,
     stock: product.stock || 0,
-    category: { name: product.category.name, id: product.category.id },
+    category: { 
+      name: product.category.name, 
+      id: product.category.id,
+      type: product.category.type,
+      slug: product.category.slug,
+      parent: product.category.parent ? {
+        name: product.category.parent.name,
+        id: product.category.parent.id,
+        type: product.category.parent.type,
+        slug: product.category.parent.slug
+      } : null
+    },
     brand: product.brand,
     description: product.description,
     images: product.images && product.images.length > 0 ? product.images : ['/placeholder.png'],
@@ -117,6 +179,39 @@ function transformProduct(product: any) {
     discount: product.discount,
     featured: product.featured || false
   };
+}
+
+// Helper function to build hierarchical categories structure
+function buildHierarchicalCategories(categories: any[]): any[] {
+  const categoryMap = new Map();
+  const rootCategories: any[] = [];
+
+  // First pass: create category objects and map by ID
+  categories.forEach(category => {
+    categoryMap.set(category.id, {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      type: category.type,
+      parentId: category.parentId,
+      children: []
+    });
+  });
+
+  // Second pass: organize into hierarchy
+  categories.forEach(category => {
+    const categoryObj = categoryMap.get(category.id);
+    if (category.parentId) {
+      const parent = categoryMap.get(category.parentId);
+      if (parent) {
+        parent.children.push(categoryObj);
+      }
+    } else {
+      rootCategories.push(categoryObj);
+    }
+  });
+
+  return rootCategories;
 }
 
 
@@ -256,7 +351,17 @@ export async function POST(request: NextRequest) {
         specifications: specifications || null,
       },
       include: { 
-        category: true,
+        category: {
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                type: true
+              }
+            }
+          }
+        },
         reviews: true
       }
     });
@@ -264,13 +369,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: 'Product created successfully',
       product: {
-        ...newProduct,
-        price: Number(newProduct.price),
-        originalPrice: newProduct.originalPrice ? Number(newProduct.originalPrice) : null,
-        shippingCharges: newProduct.shippingCharges ? Number(newProduct.shippingCharges) : null,
-        gstPercentage: newProduct.gstPercentage ? Number(newProduct.gstPercentage) : null,
-        weight: newProduct.weight ? Number(newProduct.weight) : null,
-        discount: newProduct.discount ? Number(newProduct.discount) : null,
+        ...transformProductWithHierarchy(newProduct),
         createdAt: newProduct.createdAt.toISOString(),
         updatedAt: newProduct.updatedAt.toISOString(),
         discountStartDate: newProduct.discountStartDate?.toISOString() ?? null,

@@ -1,89 +1,174 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
-export async function PUT(req: NextRequest,
+export async function GET(
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
   try {
-    // Check if user is admin
+    // Check authentication using NextAuth
     const session = await getServerSession(authOptions)
 
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const data = await req.json()
-
-    // Validate required fields
-    if (!data.name) {
-      return NextResponse.json({ error: "Category name is required" }, { status: 400 })
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
-    // Check if category with this name already exists (excluding current category)
-    const existingCategory = await prisma.category.findFirst({
-      where: {
-        name: data.name,
-        id: { not: id },
+    const id = (await params).id;
+
+    const category = await prisma.category.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            products: { where: { isDeleted: false } },
+            shopping: { where: { isDeleted: false } },
+            subcategories: true,
+          },
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        subcategories: {
+          include: {
+            _count: {
+              select: {
+                products: { where: { isDeleted: false } },
+                shopping: { where: { isDeleted: false } },
+              },
+            },
+          },
+        },
       },
-    })
+    });
 
-    if (existingCategory) {
-      return NextResponse.json({ error: "Category with this name already exists" }, { status: 400 })
+    if (!category) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
-    // Update category
-    const category = await prisma.category.update({
+    return NextResponse.json(category);
+  } catch (error) {
+    console.error('Error fetching category:', error);
+    return NextResponse.json({ error: 'Failed to fetch category' }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Check authentication using NextAuth
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
+    }
+
+    const id = (await params).id;
+    const body = await request.json();
+    const { name, type, isFestival, festivalType } = body;
+
+    // Check if category exists
+    const existingCategory = await prisma.category.findUnique({
+      where: { id },
+    });
+
+    if (!existingCategory) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
+    // Generate slug from name if name is being updated
+    const slug = name ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : existingCategory.slug;
+
+    const updatedCategory = await prisma.category.update({
       where: { id },
       data: {
-        name: data.name,
+        ...(name && { name }),
+        ...(slug && { slug }),
+        ...(type && { type }),
+        ...(isFestival !== undefined && { isFestival }),
+        ...(festivalType !== undefined && { festivalType }),
       },
-    })
+    });
 
-    return NextResponse.json(category)
-  } catch (error) {
-    console.error("Error updating category:", error)
-    return NextResponse.json({ error: "Failed to update category" }, { status: 500 })
+    return NextResponse.json(updatedCategory);
+  } catch (error: any) {
+    console.error('Error updating category:', error);
+    if (error.code === 'P2002') {
+      return NextResponse.json({ error: 'Category name or slug already exists' }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request,
+export async function DELETE(
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
   try {
-    // Check if user is admin
+    // Check authentication using NextAuth
     const session = await getServerSession(authOptions)
 
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if category has products
-    const productsCount = await prisma.product.count({
-      where: {
-        categoryId: id,
-      },
-    })
-
-    if (productsCount > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete category with products. Please reassign or delete the products first." },
-        { status: 400 },
-      )
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
 
-    // Delete category
+    const id = (await params).id;
+
+    // Check if category has subcategories or products
+    const categoryWithRelations = await prisma.category.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            products: true,
+            shopping: true,
+            subcategories: true,
+          },
+        },
+      },
+    });
+
+    if (!categoryWithRelations) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
+    // Prevent deletion if category has subcategories, products, or shopping items
+    if (
+      categoryWithRelations._count.subcategories > 0 ||
+      categoryWithRelations._count.products > 0 ||
+      categoryWithRelations._count.shopping > 0
+    ) {
+      return NextResponse.json({ 
+        error: 'Cannot delete category with existing subcategories or products. Please move or delete all related items first.' 
+      }, { status: 400 });
+    }
+
     await prisma.category.delete({
       where: { id },
-    })
+    });
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ message: 'Category deleted successfully' });
   } catch (error) {
-    console.error("Error deleting category:", error)
-    return NextResponse.json({ error: "Failed to delete category" }, { status: 500 })
+    console.error('Error deleting category:', error);
+    return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 });
   }
 }
-

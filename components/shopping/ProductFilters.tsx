@@ -87,14 +87,14 @@ export default function ProductFilters({
           </div>
           
           <div className="flex flex-wrap gap-2">
-            {selectedCategories.map((categorySlug) => {
-              const category = filters.categories.find(c => c.slug === categorySlug)
+            {selectedCategories.map((categoryId) => {
+              const category = filters.categories.find(c => c.id === categoryId)
               return category ? (
-                <Badge key={categorySlug} variant="secondary" className="text-xs">
+                <Badge key={categoryId} variant="secondary" className="text-xs">
                   {category.name}
                   <X 
                     className="h-3 w-3 ml-1 cursor-pointer" 
-                    onClick={() => onCategoryChange(selectedCategories.filter(c => c !== categorySlug))}
+                    onClick={() => onCategoryChange(selectedCategories.filter(c => c !== categoryId))}
                   />
                 </Badge>
               ) : null
@@ -165,12 +165,12 @@ export default function ProductFilters({
               <div key={category.id} className="flex items-center space-x-2">
                 <Checkbox
                   id={`category-${category.id}`}
-                  checked={selectedCategories.includes(category.slug)}
+                  checked={selectedCategories.includes(category.id)}
                   onCheckedChange={(checked) => {
                     if (checked) {
-                      onCategoryChange([...selectedCategories, category.slug])
+                      onCategoryChange([...selectedCategories, category.id])
                     } else {
-                      onCategoryChange(selectedCategories.filter((c) => c !== category.slug))
+                      onCategoryChange(selectedCategories.filter((c) => c !== category.id))
                     }
                   }}
                 />

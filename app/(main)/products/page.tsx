@@ -14,7 +14,8 @@ import {
   Search,
   ChevronDown,
   X,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,9 +38,24 @@ interface Product {
   discount?: number | null;
   averageRating?: number;
   reviewCount?: number;
-  category?: { name: string; id: string } | null;
+  category?: { 
+    name: string; 
+    id: string; 
+    type: string;
+    slug: string;
+    parent?: { name: string; id: string; type: string; slug: string } | null;
+  } | null;
   vendor?: { user: { name: string; email: string } } | null;
   description: string;
+}
+
+interface HierarchicalCategory {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  parentId?: string;
+  children: HierarchicalCategory[];
 }
 
 interface ProductsResponse {
@@ -48,7 +64,8 @@ interface ProductsResponse {
   totalPages: number;
   filters: {
     brands: string[];
-    categories: { id: string; name: string }[];
+    categories: HierarchicalCategory[]; // Hierarchical categories
+    mainCategories: { id: string; name: string; type: string; slug: string }[];
   };
 }
 
@@ -64,8 +81,7 @@ const ProductCard = ({ product, view }: { product: Product; view: string }) => {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-       addItem(product.id, 1);
-
+    addItem(product.id, 1);
     toast.success(`${product.name} added to cart`);
   };
 
@@ -91,6 +107,15 @@ const ProductCard = ({ product, view }: { product: Product; view: string }) => {
     (product.originalPrice && product.originalPrice > product.price
       ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
       : 0);
+
+  const getCategoryDisplay = () => {
+    if (!product.category) return null;
+    
+    if (product.category.parent) {
+      return `${product.category.parent.name} → ${product.category.name}`;
+    }
+    return product.category.name;
+  };
 
   if (view === "list") {
     return (
@@ -129,7 +154,7 @@ const ProductCard = ({ product, view }: { product: Product; view: string }) => {
                     
                     {product.category && (
                       <Badge variant="outline" className="text-xs mb-2">
-                        {product.category.name}
+                        {getCategoryDisplay()}
                       </Badge>
                     )}
                     
@@ -253,7 +278,7 @@ const ProductCard = ({ product, view }: { product: Product; view: string }) => {
         <div className="p-2 sm:p-3 lg:p-4 space-y-2 sm:space-y-3">
           {product.category && (
             <Badge variant="outline" className="text-[10px] sm:text-xs px-1 py-0.5">
-              {product.category.name}
+              {getCategoryDisplay()}
             </Badge>
           )}
           
@@ -317,6 +342,90 @@ const ProductCard = ({ product, view }: { product: Product; view: string }) => {
   );
 };
 
+const CategoryFilter = ({ 
+  categories, 
+  selectedCategory, 
+  onCategoryChange 
+}: { 
+  categories: HierarchicalCategory[];
+  selectedCategory: string;
+  onCategoryChange: (categoryId: string) => void;
+}) => {
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (categoryId: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoryId)) {
+      newExpanded.delete(categoryId);
+    } else {
+      newExpanded.add(categoryId);
+    }
+    setExpandedCategories(newExpanded);
+  };
+
+  const renderCategory = (category: HierarchicalCategory, level = 0) => {
+    const hasChildren = category.children && category.children.length > 0;
+    const isExpanded = expandedCategories.has(category.id);
+    const isSelected = selectedCategory === category.id;
+
+    return (
+      <div key={category.id} className={level > 0 ? 'ml-4' : ''}>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center space-x-2 cursor-pointer py-1">
+            <input
+              type="radio"
+              name="category"
+              value={category.id}
+              checked={isSelected}
+              onChange={(e) => onCategoryChange(e.target.value)}
+              className="text-orange-600"
+            />
+            <span className="text-sm text-gray-700">{category.name}</span>
+          </label>
+          {hasChildren && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => toggleCategory(category.id)}
+            >
+              <ChevronRight 
+                className={`h-3 w-3 transition-transform ${
+                  isExpanded ? 'rotate-90' : ''
+                }`} 
+              />
+            </Button>
+          )}
+        </div>
+        
+        {hasChildren && isExpanded && (
+          <div className="ml-2 border-l border-gray-200 pl-2">
+            {category.children.map(child => renderCategory(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="flex items-center space-x-2">
+        <input
+          type="radio"
+          name="category"
+          value=""
+          checked={selectedCategory === ""}
+          onChange={(e) => onCategoryChange("")}
+          className="text-orange-600"
+        />
+        <span className="text-sm text-gray-700 font-medium">All Categories</span>
+      </label>
+      
+      {categories.map(category => renderCategory(category))}
+    </div>
+  );
+};
+
 const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -339,6 +448,9 @@ const ProductsPage = () => {
     todaysDeals: false,
     discounts: [] as number[],
   });
+  
+  const [hierarchicalCategories, setHierarchicalCategories] = useState<HierarchicalCategory[]>([]);
+  const [mainCategories, setMainCategories] = useState<any[]>([]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -367,6 +479,14 @@ const ProductsPage = () => {
       setProducts(data.products);
       setTotal(data.total);
       setTotalPages(data.totalPages);
+      
+      // Set hierarchical categories from API response
+      if (data.filters.categories) {
+        setHierarchicalCategories(data.filters.categories);
+      }
+      if (data.filters.mainCategories) {
+        setMainCategories(data.filters.mainCategories);
+      }
     } catch (error) {
       console.error("Error fetching products:", error);
       toast.error("Failed to load products");
@@ -480,61 +600,14 @@ const ProductsPage = () => {
               </div>
               
               <div className="space-y-6">
-                {/* Department */}
+                {/* Category Filter - Using Hierarchical Categories */}
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Department</h3>
-                  <div className="space-y-2 max-h-32 sm:max-h-48 overflow-y-auto text-sm">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="department"
-                        value=""
-                        checked={filters.category === ""}
-                        onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                        className="text-orange-600"
-                      /> 
-                       <span className="text-sm text-gray-700">All Products</span>
-                    </label>
-                    {[
-                      "Agricultural Machinery & Tools",
-                      "Automotive Workshop & Garage Equipment",
-                      "Beauty & Salon Machinery",
-                      "Cold Chain Equipment",
-                      "Commercial Machinery & Equipment",
-                      "Construction & Civil Machinery",
-                      "Educational & Training Equipment",
-                      "Fire Safety & Disaster Management Equipment",
-                      "Food Processing Machinery",
-                      "Home & Small Business Machines",
-                      "HVAC & Refrigeration Equipment",
-                      "Industrial Machinery & Tools",
-                      "Laboratory & Scientific Equipment",
-                      "Medical & Surgical Equipment",
-                      "Metalworking Machinery",
-                      "Mining & Drilling Machinery",
-                      "Office & Institutional Equipment",
-                      "Packaging & Printing Machinery",
-                      "Pharmaceutical Manufacturing Machinery",
-                      "Plastic & Rubber Processing Machinery",
-                      "Renewable Energy Equipment",
-                      "Textile & Garment Machinery",
-                      "Waste Management & Recycling Machinery",
-                      "Water & Wastewater Treatment Equipment",
-                      "Woodworking & Carpentry Machinery"
-                    ].map((dept) => (
-                      <label key={dept} className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          name="department"
-                          value={dept}
-                          checked={filters.category === dept}
-                          onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                          className="text-orange-600"
-                        />
-                        <span className="text-sm text-gray-700">{dept}</span>
-                      </label>
-                    ))}
-                  </div>
+                  <h3 className="font-medium text-gray-900 mb-3">Categories</h3>
+                  <CategoryFilter
+                    categories={hierarchicalCategories}
+                    selectedCategory={filters.category}
+                    onCategoryChange={(categoryId) => setFilters(prev => ({ ...prev, category: categoryId }))}
+                  />
                 </div>
 
                 {/* Customer Reviews */}

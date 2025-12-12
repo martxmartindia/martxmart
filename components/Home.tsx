@@ -637,8 +637,16 @@ const CategoryShowcase = () => {
       name: string;
       image: string;
       productCount: number;
+      shoppingCount: number;
       featured: boolean;
       description: string;
+      subcategories?: Array<{
+        id: string;
+        name: string;
+        productCount: number;
+        shoppingCount: number;
+        image: string;
+      }>;
     }>
   >([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -647,7 +655,8 @@ const CategoryShowcase = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch("/api/categories?type=MACHINE");
+        // Fetch main categories with subcategories and product counts
+        const response = await fetch("/api/categories?type=MACHINE&includeSubcategories=true&includeProducts=false");
         if (!response.ok) {
           throw new Error("Failed to fetch categories");
         }
@@ -706,6 +715,12 @@ const CategoryShowcase = () => {
     );
   }
 
+  // Filter to show only main categories (those with subcategories or high product counts)
+  const mainCategories = categories.filter(category =>
+    (category.subcategories && category.subcategories.length > 0) ||
+    category.productCount > 10
+  );
+
   return (
     <section className="py-8 sm:py-12 bg-gradient-to-br from-gray-50 to-white">
       <div className="container mx-auto px-4 sm:px-6">
@@ -723,7 +738,7 @@ const CategoryShowcase = () => {
         </div>
         
         <div className="flex space-x-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          {(categories || []).map((category, index) => (
+          {(mainCategories || []).map((category, index) => (
             <Link
               key={category.id}
               href={`/categories/${category.id}`}
@@ -742,6 +757,11 @@ const CategoryShowcase = () => {
                       Popular
                     </div>
                   )}
+                  {category.subcategories && category.subcategories.length > 0 && (
+                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                      {category.subcategories.length} subcategories
+                    </div>
+                  )}
                 </div>
                 <div className="text-center">
                   <h3 className="font-medium text-gray-900 group-hover:text-orange-600 transition-colors text-sm mb-1 line-clamp-2">
@@ -749,7 +769,7 @@ const CategoryShowcase = () => {
                   </h3>
                   <div className="flex items-center justify-center gap-1 text-xs text-gray-500">
                     <ShoppingCart className="w-3 h-3" />
-                    {category.productCount} Products
+                    {category.productCount + category.shoppingCount} Products
                   </div>
                 </div>
               </div>
@@ -757,7 +777,7 @@ const CategoryShowcase = () => {
           ))}
         </div>
         
-        {categories.length === 0 && !isLoading && (
+        {mainCategories.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Store className="w-8 h-8 text-gray-400" />

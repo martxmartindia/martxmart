@@ -51,7 +51,13 @@ export async function GET(request: Request) {
           isAvailable: true,
         },
         include: {
-          category: { select: { name: true, slug: true } },
+          category: {
+            include: {
+              parent: {
+                select: { id: true, name: true, slug: true }
+              }
+            }
+          },
           reviews: { select: { rating: true } },
           _count: { select: { reviews: true } },
         },
@@ -65,7 +71,13 @@ export async function GET(request: Request) {
           isAvailable: true,
         },
         include: {
-          category: { select: { name: true, slug: true } },
+          category: {
+            include: {
+              parent: {
+                select: { id: true, name: true, slug: true }
+              }
+            }
+          },
           reviews: { select: { rating: true } },
           _count: { select: { reviews: true } },
         },
@@ -79,7 +91,13 @@ export async function GET(request: Request) {
           isAvailable: true,
         },
         include: {
-          category: { select: { name: true, slug: true } },
+          category: {
+            include: {
+              parent: {
+                select: { id: true, name: true, slug: true }
+              }
+            }
+          },
           reviews: { select: { rating: true } },
           _count: { select: { reviews: true } },
         },
@@ -93,7 +111,13 @@ export async function GET(request: Request) {
           isAvailable: true,
         },
         include: {
-          category: { select: { name: true, slug: true } },
+          category: {
+            include: {
+              parent: {
+                select: { id: true, name: true, slug: true }
+              }
+            }
+          },
           reviews: { select: { rating: true } },
           _count: { select: { reviews: true } },
         },
@@ -107,7 +131,13 @@ export async function GET(request: Request) {
           isAvailable: true,
         },
         include: {
-          category: { select: { name: true, slug: true } },
+          category: {
+            include: {
+              parent: {
+                select: { id: true, name: true, slug: true }
+              }
+            }
+          },
           reviews: { select: { rating: true } },
           _count: { select: { reviews: true } },
         },
@@ -121,7 +151,13 @@ export async function GET(request: Request) {
           isAvailable: true,
         },
         include: {
-          category: { select: { name: true, slug: true } },
+          category: {
+            include: {
+              parent: {
+                select: { id: true, name: true, slug: true }
+              }
+            }
+          },
           reviews: { select: { rating: true } },
           _count: { select: { reviews: true } },
         },
@@ -130,10 +166,17 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    // Function to calculate average rating
+    // Function to calculate average rating and transform category data
     const addRatings = (products: any[]) =>
       products.map((product) => ({
         ...product,
+        category: {
+          ...product.category,
+          parent: product.category.parent ? {
+            name: product.category.parent.name,
+            slug: product.category.parent.slug,
+          } : null
+        },
         averageRating:
           product.reviews.length > 0
             ? product.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) /
@@ -157,7 +200,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("❌ Home API error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch home data" },
+      { error: "Failed to fetch home data", details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

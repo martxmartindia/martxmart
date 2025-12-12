@@ -77,8 +77,8 @@ export async function GET(request: Request) {
     }
 
     if (categories.length > 0) {
-      where.category = {
-        slug: { in: categories },
+      where.categoryId = {
+        in: categories,
       }
     }
 

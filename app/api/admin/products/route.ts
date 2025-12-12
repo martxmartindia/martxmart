@@ -15,6 +15,7 @@ export async function GET(req: Request) {
     if (session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Access denied. Admin role required." }, { status: 403 })
     }
+    
     const searchParams = new URL(req.url).searchParams;
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
@@ -43,26 +44,26 @@ export async function GET(req: Request) {
           {
             description: {
               contains: search,
-              mode: 'insensitive' as const
+              mode: 'insensitive'
             }
           },
           {
             brand: {
               contains: search,
-              mode: 'insensitive' as const
+              mode: 'insensitive'
             }
           },
           {
             hsnCode: {
               contains: search,
-              mode: 'insensitive' as const
+              mode: 'insensitive'
             }
           },
           {
             category: {
               name: {
                 contains: search,
-                mode: 'insensitive' as const
+                mode: 'insensitive'
               }
             }
           }
@@ -71,10 +72,16 @@ export async function GET(req: Request) {
       ...(brand && {
         brand: {
           contains: brand,
-          mode: 'insensitive' as const
+          mode: 'insensitive'
         }
       }),
-      ...(category && category !== 'all' && { categoryId: category }),
+      ...(category && category !== 'all' && { 
+        OR: [
+          { categoryId: category },
+          { category: { parentId: category } },
+          { category: { parentId: { not: null }, parent: { parentId: category } } }
+        ]
+      }),
       ...(featured && featured !== 'all' && { featured: featured === 'true' })
     };
 
@@ -110,7 +117,17 @@ export async function GET(req: Request) {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          category: true,
+          category: {
+            include: {
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true
+                }
+              }
+            }
+          },
         },
         orderBy: { createdAt: "desc" }
       }),
@@ -119,8 +136,17 @@ export async function GET(req: Request) {
       })
     ]);
 
+    // Transform products with hierarchical category information
+    const transformedProducts = products.map((product: any) => ({
+      ...product,
+      category: {
+        ...product.category,
+        parent: product.category.parent || null
+      }
+    }));
+
     return NextResponse.json({
-      products,
+      products: transformedProducts,
       totalPages: Math.ceil(total / limit),
       total,
       page,
@@ -148,7 +174,23 @@ export async function PUT(req: Request) {
 
     const { id, featured, isDeleted } = await req.json();
     
-    const product = await prisma.product.findUnique({ where: { id } });
+    const product = await prisma.product.findUnique({ 
+      where: { id },
+      include: {
+        category: {
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                type: true
+              }
+            }
+          }
+        }
+      }
+    });
+    
     if (!product) {
       return NextResponse.json({ message: "Product not found" }, { status: 404 });
     }
@@ -160,13 +202,29 @@ export async function PUT(req: Request) {
         isDeleted: isDeleted !== undefined ? isDeleted : product.isDeleted
       },
       include: {
-        category: true,
+        category: {
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                type: true
+              }
+            }
+          }
+        }
       }
     });
 
     return NextResponse.json({
       message: "Product updated successfully",
-      product: updatedProduct
+      product: {
+        ...updatedProduct,
+        category: {
+          ...updatedProduct.category,
+          parent: updatedProduct.category.parent || null
+        }
+      }
     });
 
   } catch (error) {

@@ -3,6 +3,99 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user?.role !== "FRANCHISE") {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { id: productId } = await params;
+    const body = await request.json();
+
+    // Get franchise
+    const franchise = await prisma.franchise.findFirst({
+      where: { ownerId: session.user.id },
+    });
+
+    if (!franchise) {
+      return NextResponse.json(
+        { error: "Franchise not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if product exists and belongs to franchise's inventory
+    const inventoryItem = await prisma.productInventory.findFirst({
+      where: {
+        productId: productId,
+        franchiseId: franchise.id,
+      },
+    });
+
+    if (!inventoryItem) {
+      return NextResponse.json(
+        { error: "Product not found in your inventory" },
+        { status: 404 }
+      );
+    }
+
+    // Update product
+    const updatedProduct = await prisma.product.update({
+      where: { id: productId },
+      data: {
+        name: body.name,
+        description: body.description,
+        price: body.price,
+        stock: body.stock,
+        brand: body.brand,
+        modelNumber: body.modelNumber,
+        hsnCode: body.hsnCode,
+        gstPercentage: body.gstPercentage,
+        dimensions: body.dimensions,
+        weight: body.weight,
+        specifications: body.specifications,
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Update inventory quantity if provided
+    if (body.stock !== undefined) {
+      await prisma.productInventory.update({
+        where: { id: inventoryItem.id },
+        data: {
+          quantity: body.stock,
+        },
+      });
+    }
+
+    return NextResponse.json({
+      message: "Product updated successfully",
+      product: updatedProduct,
+    });
+  } catch (error) {
+    console.error("Franchise update product error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

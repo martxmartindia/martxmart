@@ -359,7 +359,7 @@ export default function EditProductPage() {
         // Fetch product and categories in parallel
         const [productResponse, categoriesResponse] = await Promise.all([
           fetch(`/api/products/${id}`, { credentials: 'include' }),
-          fetch("/api/categories?type=MACHINE")
+          fetch("/api/categories?type=MACHINE&flatList=true")
         ]);
         
         const [productData, categoriesData] = await Promise.all([

@@ -109,6 +109,11 @@ interface HsnCode {
 interface Category {
   id: string;
   name: string;
+  slug?: string;
+  type?: string;
+  parentId?: string | null;
+  subcategories?: Category[];
+  parentName?: string; // For display purposes
 }
 
 const materialOptions = [
@@ -181,12 +186,56 @@ const productTypeOptions = [
   { value: "Plastic and Rubber Processing Machinery", label: "Plastic and Rubber Processing Machinery" },
 ];
 
+// Helper function to flatten hierarchical categories
+const flattenCategories = (hierarchicalCategories: any[]): Category[] => {
+  const flattened: Category[] = [];
+  
+  hierarchicalCategories.forEach(category => {
+    // Add main category
+    flattened.push({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      type: category.type,
+      parentId: category.parentId || null,
+      subcategories: category.subcategories || [],
+      parentName: undefined // Main category has no parent
+    });
+    
+    // Add subcategories with parent name for display
+    if (category.subcategories && category.subcategories.length > 0) {
+      category.subcategories.forEach((subcategory: any) => {
+        flattened.push({
+          id: subcategory.id,
+          name: subcategory.name,
+          slug: subcategory.slug,
+          type: subcategory.type,
+          parentId: subcategory.parentId,
+          subcategories: subcategory.subcategories || [],
+          parentName: category.name // Display parent category name
+        });
+      });
+    }
+  });
+  
+  return flattened;
+};
+
+// Helper function to get category display name
+const getCategoryDisplayName = (category: Category): string => {
+  if (category.parentName) {
+    return `${category.parentName} > ${category.name}`;
+  }
+  return category.name;
+};
+
 export default function NewProductPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingHsn, setIsFetchingHsn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [hierarchicalCategories, setHierarchicalCategories] = useState<any[]>([]);
   const [hsnCodes, setHsnCodes] = useState<HsnCode[]>([]);
   const [hsnSearch, setHsnSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -272,18 +321,22 @@ export default function NewProductPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch("/api/categories?type=MACHINE", {
+        const response = await fetch("/api/categories?type=MACHINE&flatList=true", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         });
         const data = await response.json();
         if (response.ok && Array.isArray(data)) {
-          setCategories(data);
+          setHierarchicalCategories(data);
+          // Flatten all categories (main + subcategories) for the dropdown
+          const flattenedCategories = flattenCategories(data);
+          setCategories(flattenedCategories);
         } else {
           const message = data.error || "Failed to fetch categories";
           setError(message);
           toast.error(message);
           setCategories([]);
+          setHierarchicalCategories([]);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
@@ -423,6 +476,9 @@ export default function NewProductPage() {
                             </SelectContent>
                           </Select>
                           <FormMessage />
+                          <FormDescription>
+                            Select from main categories or subcategories. Subcategories show the parent category path.
+                          </FormDescription>
                         </FormItem>
                       )}
                     />

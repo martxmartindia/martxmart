@@ -24,6 +24,10 @@ interface Product {
   category: {
     name: string;
     slug: string;
+    parent?: {
+      name: string;
+      slug: string;
+    } | null;
   };
   isFestival?: boolean;
   festivalType?: string;
@@ -224,7 +228,10 @@ const fetchHomeData = async () => {
           <div className="space-y-2">
             <div>
               <Badge variant="outline" className="text-xs mb-1">
-                {product.category.name}
+                {product.category.parent 
+                  ? `${product.category.parent.name} → ${product.category.name}`
+                  : product.category.name
+                }
               </Badge>
               <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-2">
                 {product.name}

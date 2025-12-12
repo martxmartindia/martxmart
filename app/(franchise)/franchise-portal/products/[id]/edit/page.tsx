@@ -65,13 +65,28 @@ export default function EditProductPage() {
         const productData = await productResponse.json()
 
         // Fetch categories for dropdown
-        const categoriesResponse = await fetch(`/api/franchise-portal/products?franchiseId=fr-001`)
+        const categoriesResponse = await fetch(`/api/categories?type=MACHINE&includeSubcategories=true`)
         if (!categoriesResponse.ok) {
           throw new Error("Failed to fetch categories")
         }
         const categoriesData = await categoriesResponse.json()
 
-        setCategories(categoriesData.categories || [])
+        // Flatten categories for dropdown (parent categories + subcategories)
+        const flattenedCategories = categoriesData.flatMap((cat: any) => {
+          const allCategories = [{ id: cat.id, name: cat.name, isSubcategory: false }]
+          if (cat.subcategories && cat.subcategories.length > 0) {
+            cat.subcategories.forEach((sub: any) => {
+              allCategories.push({
+                id: sub.id,
+                name: `${cat.name} > ${sub.name}`,
+                isSubcategory: true
+              })
+            })
+          }
+          return allCategories
+        })
+
+        setCategories(flattenedCategories)
 
         // Set form data
         setFormData({
