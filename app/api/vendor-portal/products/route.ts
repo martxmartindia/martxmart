@@ -34,7 +34,14 @@ export async function GET(req: Request) {
     })
 
     if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      // Return empty products list instead of 404
+      return NextResponse.json({
+        products: [],
+        totalPages: 0,
+        total: 0,
+        page: 1,
+        limit: 10
+      })
     }
 
     // Build where clause for filtering
@@ -97,23 +104,31 @@ export async function GET(req: Request) {
     })
 
     // Format products for frontend
-    const formattedProducts = products.map(product => ({
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      stock: product.stock,
-      category: product.category?.name || "Uncategorized",
-      status: product.isDeleted ? "INACTIVE" : "ACTIVE",
-      approvalStatus: product.isDeleted ? "REJECTED" : "APPROVED",
-      brand: product.brand,
-      modelNumber: product.modelNumber,
-      hsnCode: product.hsnCode,
-      images: product.images,
-      createdAt: product.createdAt,
-      updatedAt: product.updatedAt,
-      specifications: product.specifications
-    }))
+    const formattedProducts = products.map(product => {
+      const vendorPrice = parseFloat(product.price.toString())
+      const platformPrice = vendorPrice * 1.05 // 5% markup
+
+      return {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        vendorPrice: vendorPrice,
+        platformPrice: platformPrice,
+        price: vendorPrice, // Keep for compatibility
+        stock: product.stock,
+        category: product.category?.name || "Uncategorized",
+        status: product.isDeleted ? "INACTIVE" : "APPROVED",
+        approvalStatus: product.isDeleted ? "REJECTED" : "APPROVED",
+        sku: product.modelNumber || `SKU-${product.id.slice(-6)}`,
+        brand: product.brand,
+        modelNumber: product.modelNumber,
+        hsnCode: product.hsnCode,
+        images: product.images || [],
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+        specifications: product.specifications
+      }
+    })
 
     // Apply status filter after fetching (since we don't have approvalStatus in schema)
     let filteredProducts = formattedProducts

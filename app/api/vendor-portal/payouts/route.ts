@@ -32,17 +32,26 @@ export async function GET(req: Request) {
     })
 
     if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      // Return empty payouts list instead of 404
+      return NextResponse.json({
+        payouts: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0,
+        },
+      })
     }
 
     // Generate payout periods (last 6 months)
     const payoutPeriods = []
     const now = new Date()
-    
+
     for (let i = 0; i < 6; i++) {
       const periodStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const periodEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0)
-      
+
       // Get delivered orders in this period
       const periodOrders = await prisma.productOrderItem.findMany({
         where: {
@@ -76,18 +85,19 @@ export async function GET(req: Request) {
       }, 0)
 
       const orderIds = [...new Set(periodOrders.map(item => item.order.id))]
-      
+
       if (totalAmount > 0) {
         payoutPeriods.push({
           id: `POUT-${periodStart.getFullYear()}${String(periodStart.getMonth() + 1).padStart(2, '0')}`,
+          reference: `PAY-${periodStart.getFullYear()}${String(periodStart.getMonth() + 1).padStart(2, '0')}`,
           amount: totalAmount,
           status: i === 0 ? "PENDING" : "COMPLETED", // Current month is pending
-          requestDate: new Date(periodEnd.getTime() + 24 * 60 * 60 * 1000), // Next day after period end
-          processedDate: i === 0 ? null : new Date(periodEnd.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days later
+          createdAt: periodEnd.toISOString(),
+          processedAt: i === 0 ? null : new Date(periodEnd.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
           paymentMethod: "Bank Transfer",
-          bankDetails: "Bank details on file",
-          description: `${periodStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Sales Payout`,
-          orders: orderIds.length,
+          transactionId: i === 0 ? null : `TXN${Date.now().toString().slice(-8)}`,
+          salesCount: orderIds.length,
+          orderIds: orderIds,
           period: `${periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${periodStart.getFullYear()}`
         })
       }

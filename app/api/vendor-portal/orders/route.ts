@@ -33,7 +33,16 @@ export async function GET(req: Request) {
     })
 
     if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      // Return empty orders list instead of 404
+      return NextResponse.json({
+        orders: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0,
+        },
+      })
     }
 
     // Build where clause for filtering orders that contain this vendor's products

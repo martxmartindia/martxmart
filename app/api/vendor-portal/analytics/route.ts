@@ -29,7 +29,25 @@ export async function GET(req: Request) {
     })
 
     if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      // Return default analytics data matching frontend interface
+      return NextResponse.json({
+        revenue: { current: 0, previous: 0, change: 0, data: [] },
+        orders: { current: 0, previous: 0, change: 0, data: [] },
+        customers: { current: 0, previous: 0, change: 0 },
+        products: { current: 0, previous: 0, change: 0 },
+        topProducts: [],
+        categoryBreakdown: [],
+        summary: {
+          totalRevenue: 0,
+          totalOrders: 0,
+          totalQuantity: 0,
+          averageOrderValue: 0,
+          period: `${days} days`,
+        },
+        salesTrend: [],
+        lowStockProducts: [],
+        ordersByStatus: {},
+      })
     }
 
     // Calculate date range
@@ -104,7 +122,7 @@ export async function GET(req: Request) {
       const date = new Date()
       date.setDate(date.getDate() - i)
       date.setHours(0, 0, 0, 0)
-      
+
       const nextDate = new Date(date)
       nextDate.setDate(nextDate.getDate() + 1)
 
@@ -184,7 +202,7 @@ export async function GET(req: Request) {
           images: true
         }
       })
-      
+
       if (product) {
         topProducts.push({
           id: product.id,

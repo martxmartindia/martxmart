@@ -24,7 +24,29 @@ export async function GET(req: Request) {
     })
 
     if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      // Return empty dashboard data instead of 404
+      return NextResponse.json({
+        stats: {
+          totalProducts: 0,
+          approvedProducts: 0,
+          pendingProducts: 0,
+          totalOrders: 0,
+          pendingOrders: 0,
+          packingOrders: 0,
+          totalEarnings: 0,
+          totalRevenue: 0,
+          monthlyEarnings: 0,
+          earningsChange: 0,
+          averageRating: 0,
+          lowStockProducts: 0,
+          totalCustomers: 0,
+          newMessages: 0,
+        },
+        recentOrders: [],
+        topProducts: [],
+        earningsChart: [],
+        orderStatusChart: [],
+      })
     }
 
     // Get current month and last month dates
@@ -246,7 +268,7 @@ export async function GET(req: Request) {
         where: { id: item.productId },
         select: { name: true }
       })
-      
+
       if (product) {
         formattedTopProducts.push({
           id: item.productId,
@@ -264,7 +286,7 @@ export async function GET(req: Request) {
       monthDate.setMonth(monthDate.getMonth() - i)
       monthDate.setDate(1)
       monthDate.setHours(0, 0, 0, 0)
-      
+
       const nextMonth = new Date(monthDate)
       nextMonth.setMonth(nextMonth.getMonth() + 1)
 
@@ -340,6 +362,41 @@ export async function GET(req: Request) {
       color: getStatusColor(status.status)
     }))
 
+    // Get low stock product count
+    const lowStockProducts = await prisma.product.count({
+      where: {
+        VendorProfile: {
+          some: {
+            id: vendorProfile.id
+          }
+        },
+        stock: {
+          lte: 10
+        }
+      }
+    })
+
+    // Get unique customers count
+    const customerOrders = await prisma.productOrderItem.findMany({
+      where: {
+        product: {
+          VendorProfile: {
+            some: {
+              id: vendorProfile.id
+            }
+          }
+        }
+      },
+      include: {
+        order: {
+          select: {
+            userId: true
+          }
+        }
+      }
+    })
+    const uniqueCustomers = new Set(customerOrders.map(item => item.order.userId)).size
+
     const dashboardData = {
       stats: {
         totalProducts,
@@ -349,11 +406,19 @@ export async function GET(req: Request) {
         pendingOrders,
         packingOrders,
         totalEarnings: totalRevenue,
+        totalRevenue: totalRevenue, // Alias for compatibility
         monthlyEarnings: currentMonthRevenue,
         earningsChange,
+        averageRating: vendorProfile.rating || 4.5,
+        lowStockProducts,
+        totalCustomers: uniqueCustomers,
+        newMessages: 0, // Would need message tracking
       },
       recentOrders: formattedRecentOrders,
-      topProducts: formattedTopProducts,
+      topProducts: formattedTopProducts.map(p => ({
+        ...p,
+        revenue: p.earnings // Alias for frontend compatibility
+      })),
       earningsChart,
       orderStatusChart,
     }

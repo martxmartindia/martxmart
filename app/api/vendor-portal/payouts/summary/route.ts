@@ -24,7 +24,15 @@ export async function GET(req: Request) {
     })
 
     if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      // Return default summary instead of 404
+      return NextResponse.json({
+        summary: {
+          totalEarnings: 0,
+          pendingAmount: 0,
+          completedPayouts: 0,
+          thisMonthEarnings: 0,
+        }
+      })
     }
 
     // Calculate payout summary based on sales data
@@ -72,7 +80,7 @@ export async function GET(req: Request) {
         },
         order: {
           status: { in: ['PROCESSING', 'SHIPPED', 'DELIVERED', 'COMPLETED'] },
-          createdAt: { 
+          createdAt: {
             gte: lastMonth,
             lt: currentMonth
           }
@@ -206,11 +214,17 @@ export async function GET(req: Request) {
     const vendorEarningsPending = pendingRevenue * 0.95 // 95% goes to vendor
 
     // Calculate growth percentage
-    const monthlyGrowth = lastMonthRevenue > 0 
-      ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
+    const monthlyGrowth = lastMonthRevenue > 0
+      ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
       : 0
 
+    // Frontend expects a flat summary object with these specific fields
     const summary = {
+      totalEarnings: vendorEarningsAllTime,
+      pendingAmount: vendorEarningsPending,
+      completedPayouts: 0, // Would need VendorPayment tracking
+      thisMonthEarnings: vendorEarningsCurrent,
+      // Additional fields for more detailed view
       currentMonth: {
         sales: currentMonthRevenue,
         platformFee: platformFeeCurrent,
@@ -223,25 +237,17 @@ export async function GET(req: Request) {
         vendorEarnings: vendorEarningsLast,
         orders: lastMonthSales._count.id,
       },
-      pendingPayouts: {
-        count: pendingPayouts._count.id,
-        amount: vendorEarningsPending,
-      },
-      totalEarnings: {
-        allTime: vendorEarningsAllTime,
-        thisYear: vendorEarningsYearToDate,
-      },
       stats: {
         averageOrderValue: currentMonthSales._count.id > 0
           ? (currentMonthRevenue / currentMonthSales._count.id)
           : 0,
-        conversionRate: 0, // Would need additional tracking data
         topProduct: topProductName,
         monthlyGrowth: monthlyGrowth,
       }
     }
 
-    return NextResponse.json(summary)
+    // Return both summary and the expected structure
+    return NextResponse.json({ summary })
 
   } catch (error) {
     console.error("Error fetching payout summary:", error)

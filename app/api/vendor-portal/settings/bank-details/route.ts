@@ -31,7 +31,15 @@ export async function GET(req: Request) {
     })
 
     if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      // Return empty bank details matching frontend interface
+      return NextResponse.json({
+        bankDetails: {
+          bankName: "",
+          accountNumber: "",
+          ifscCode: "",
+          accountHolderName: "",
+        }
+      })
     }
 
     // Return bank details from vendor profile (mask account number for security)
@@ -46,7 +54,7 @@ export async function GET(req: Request) {
       verifiedAt: vendorProfile.isVerified ? vendorProfile.updatedAt : null,
     }
 
-    return NextResponse.json(bankDetails)
+    return NextResponse.json({ bankDetails })
 
   } catch (error) {
     console.error("Error fetching bank details:", error)
@@ -74,8 +82,8 @@ export async function POST(req: Request) {
 
     // Validate required fields
     if (!accountHolderName || !bankName || !accountNumber || !ifscCode || !accountType) {
-      return NextResponse.json({ 
-        error: "Missing required fields" 
+      return NextResponse.json({
+        error: "Missing required fields"
       }, { status: 400 })
     }
 

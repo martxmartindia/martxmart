@@ -27,37 +27,34 @@ export async function GET(req: Request) {
     })
 
     if (!vendorProfile) {
-      return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 })
+      // Return default settings matching frontend interface
+      return NextResponse.json({
+        settings: {
+          emailOrders: true,
+          emailPayouts: true,
+          emailMarketing: false,
+          smsOrders: false,
+          smsPayouts: true,
+          pushNotifications: true,
+        }
+      })
     }
 
     // Extract notification settings from verificationData JSON field
     const notificationData = vendorProfile.verificationData as any
-    const notificationSettings = notificationData?.notificationSettings || {
-      emailNotifications: {
-        newOrders: true,
-        orderUpdates: true,
-        lowStock: true,
-        payouts: true,
-        systemUpdates: false,
-        marketing: false,
-      },
-      smsNotifications: {
-        newOrders: true,
-        orderUpdates: false,
-        lowStock: true,
-        payouts: true,
-        systemUpdates: false,
-      },
-      pushNotifications: {
-        newOrders: true,
-        orderUpdates: true,
-        lowStock: true,
-        payouts: true,
-        systemUpdates: true,
-      }
+    const savedSettings = notificationData?.notificationSettings || {}
+
+    // Map to frontend NotificationSettings interface
+    const settings = {
+      emailOrders: savedSettings.emailOrders ?? savedSettings.emailNotifications?.newOrders ?? true,
+      emailPayouts: savedSettings.emailPayouts ?? savedSettings.emailNotifications?.payouts ?? true,
+      emailMarketing: savedSettings.emailMarketing ?? savedSettings.emailNotifications?.marketing ?? false,
+      smsOrders: savedSettings.smsOrders ?? savedSettings.smsNotifications?.newOrders ?? false,
+      smsPayouts: savedSettings.smsPayouts ?? savedSettings.smsNotifications?.payouts ?? true,
+      pushNotifications: savedSettings.pushNotifications ?? true,
     }
 
-    return NextResponse.json(notificationSettings)
+    return NextResponse.json({ settings })
 
   } catch (error) {
     console.error("Error fetching notification settings:", error)
@@ -95,7 +92,7 @@ export async function PATCH(req: Request) {
 
     // Extract current verification data
     const currentData = vendorProfile.verificationData as any || {}
-    
+
     // Update notification settings in the JSON field
     const updatedNotificationSettings = {
       emailNotifications: {
