@@ -38,8 +38,8 @@ import {
 } from "recharts"
 import { toast } from "sonner"
 
-// Sample data for charts
-const salesData = [
+// Default sample data for charts (used as fallback when API data is empty)
+const defaultSalesData = [
   { month: "Jan", sales: 65000, orders: 120, customers: 45 },
   { month: "Feb", sales: 59000, orders: 110, customers: 52 },
   { month: "Mar", sales: 80000, orders: 140, customers: 61 },
@@ -48,7 +48,7 @@ const salesData = [
   { month: "Jun", sales: 55000, orders: 90, customers: 44 },
 ]
 
-const categoryData = [
+const defaultCategoryData = [
   { name: "Electronics", value: 35, color: "#0088FE" },
   { name: "Clothing", value: 25, color: "#00C49F" },
   { name: "Home", value: 20, color: "#FFBB28" },
@@ -56,7 +56,7 @@ const categoryData = [
   { name: "Others", value: 5, color: "#8884D8" },
 ]
 
-const topProducts = [
+const defaultTopProducts = [
   { name: "iPhone 15 Pro", sales: 45, revenue: 675000 },
   { name: 'Samsung TV 55"', sales: 38, revenue: 570000 },
   { name: "MacBook Air M2", sales: 32, revenue: 640000 },
@@ -76,7 +76,34 @@ export default function ReportsPage() {
   const fetchReportData = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/franchise-portal/reports?timeRange=${timeRange}`)
+
+      // Calculate date range based on timeRange
+      const now = new Date()
+      let startDate: Date
+
+      switch (timeRange) {
+        case "week":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          break
+        case "quarter":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+          break
+        case "year":
+          startDate = new Date(now.getFullYear(), 0, 1)
+          break
+        case "month":
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+          break
+      }
+
+      const params = new URLSearchParams({
+        type: "sales",
+        startDate: startDate.toISOString(),
+        endDate: now.toISOString(),
+      })
+
+      const response = await fetch(`/api/franchise-portal/reports?${params}`)
       if (response.ok) {
         const data = await response.json()
         setReportData(data)
@@ -125,6 +152,28 @@ export default function ReportsPage() {
       </div>
     )
   }
+
+  // Use API data with fallback to defaults
+  const salesData = reportData?.dailySales?.length > 0
+    ? reportData.dailySales.map((item: { date: string; amount: number }) => ({
+      month: new Date(item.date).toLocaleDateString('en-US', { month: 'short' }),
+      sales: item.amount,
+      orders: 0,
+      customers: 0,
+    }))
+    : defaultSalesData
+
+  const categoryData = reportData?.salesByCategory?.length > 0
+    ? reportData.salesByCategory.map((item: { name: string; value: number }, index: number) => ({
+      name: item.name,
+      value: item.value,
+      color: ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"][index % 5],
+    }))
+    : defaultCategoryData
+
+  const topProducts = reportData?.topProducts?.length > 0
+    ? reportData.topProducts
+    : defaultTopProducts
 
   return (
     <div className="space-y-6">
@@ -290,26 +339,26 @@ export default function ReportsPage() {
               </Button>
             </CardHeader>
             <CardContent>
-            <div className="h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Tooltip formatter={(value: number) => `${value}%`} />
-                <Legend />
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={120}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Tooltip formatter={(value: number) => `${value}%`} />
+                    <Legend />
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={120}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {categoryData.map((entry: { name: string; value: number; color: string }, index: number) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -329,7 +378,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topProducts.map((product, index) => (
+                {topProducts.map((product: { name: string; sales: number; revenue: number }, index: number) => (
                   <div key={product.name} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
                       <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">

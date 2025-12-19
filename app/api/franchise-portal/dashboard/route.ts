@@ -69,8 +69,10 @@ export async function GET(request: NextRequest) {
       .map((order) => ({
         id: order.id,
         orderNumber: order.orderNumber,
-        customer: order.user.name,
-        amount: Number(order.totalAmount),
+        customer: {
+          name: order.user.name,
+        },
+        totalAmount: Number(order.totalAmount),
         status: order.status.toLowerCase(),
         createdAt: order.createdAt.toISOString(),
       }));
@@ -161,7 +163,7 @@ export async function GET(request: NextRequest) {
         .reduce((sum, order) => sum + Number(order.totalAmount), 0);
 
       salesByDay.push({
-        day: dateStr,
+        date: dateStr,
         amount: dayAmount,
       });
     }
@@ -260,14 +262,16 @@ export async function GET(request: NextRequest) {
       .slice(0, 5);
 
     return NextResponse.json({
-      totalSales: totalRevenue,
-      totalOrders,
-      totalCustomers,
-      totalProducts,
-      salesGrowth: revenueGrowth,
-      ordersGrowth,
-      customersGrowth,
-      productsGrowth,
+      metrics: {
+        totalRevenue: totalRevenue,
+        totalOrders,
+        totalCustomers,
+        totalProducts,
+        revenueGrowth,
+        ordersGrowth,
+        customersGrowth,
+        productsGrowth,
+      },
       recentOrders,
       salesByCategory,
       salesByDay,

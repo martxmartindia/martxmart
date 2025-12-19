@@ -20,7 +20,7 @@ interface Order {
     email: string
     phone: string
   }
-  status: "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled"
+  status: "PENDING" | "COMPLETED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED"
   totalAmount: number
   itemCount: number
   createdAt: string
@@ -142,12 +142,6 @@ export default function OrdersPage() {
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Link href="/franchise-portal/orders/new">
-            <Button className="bg-orange-600 hover:bg-orange-700">
-              <Plus className="mr-2 h-4 w-4" />
-              New Order
-            </Button>
-          </Link>
         </div>
       </div>
 

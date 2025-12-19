@@ -39,8 +39,14 @@ export async function GET(request: NextRequest) {
       franchiseId: franchise.id,
     };
 
-    if (status) {
-      where.status = status;
+    // Valid OrderStatus enum values
+    const validStatuses = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "COMPLETED"];
+
+    if (status && status !== "all") {
+      const upperStatus = status.toUpperCase();
+      if (validStatuses.includes(upperStatus)) {
+        where.status = upperStatus;
+      }
     }
 
     if (search) {

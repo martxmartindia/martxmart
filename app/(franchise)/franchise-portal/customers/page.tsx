@@ -124,12 +124,6 @@ export default function CustomersPage() {
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Link href="/franchise-portal/customers/new">
-            <Button className="bg-orange-600 hover:bg-orange-700">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Customer
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -235,19 +229,6 @@ export default function CustomersPage() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Link href={`/franchise-portal/customers/${customer.id}/edit`}>
-                            <Button size="sm" variant="outline">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => deleteCustomer(customer.id)}
-                            className="text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

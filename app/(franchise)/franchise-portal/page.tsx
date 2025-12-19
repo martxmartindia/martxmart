@@ -206,22 +206,22 @@ export default function FranchiseDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(dashboardData.metrics.totalRevenue)}
+              {formatCurrency(dashboardData.metrics?.totalRevenue ?? 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               <span
                 className={`flex items-center ${
-                  dashboardData.metrics.revenueGrowth >= 0
+                  dashboardData.metrics?.revenueGrowth >= 0
                     ? "text-green-600"
                     : "text-red-600"
                 }`}
               >
-                {dashboardData.metrics.revenueGrowth >= 0 ? (
+                {dashboardData.metrics?.revenueGrowth >= 0 ? (
                   <TrendingUp className="mr-1 h-3 w-3" />
                 ) : (
                   <TrendingDown className="mr-1 h-3 w-3" />
                 )}
-                {Math.abs(dashboardData.metrics.revenueGrowth).toFixed(1)}%
+                {Math.abs(dashboardData.metrics?.revenueGrowth ?? 0).toFixed(1)}%
               </span>
               from last month
             </p>
@@ -235,22 +235,22 @@ export default function FranchiseDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {dashboardData.metrics.totalOrders}
+              {dashboardData.metrics?.totalOrders}
             </div>
             <p className="text-xs text-muted-foreground">
               <span
                 className={`flex items-center ${
-                  dashboardData.metrics.ordersGrowth >= 0
+                  dashboardData.metrics?.ordersGrowth >= 0
                     ? "text-green-600"
                     : "text-red-600"
                 }`}
               >
-                {dashboardData.metrics.ordersGrowth >= 0 ? (
+                {dashboardData.metrics?.ordersGrowth >= 0 ? (
                   <TrendingUp className="mr-1 h-3 w-3" />
                 ) : (
                   <TrendingDown className="mr-1 h-3 w-3" />
                 )}
-                {Math.abs(dashboardData.metrics.ordersGrowth).toFixed(1)}%
+                {Math.abs(dashboardData.metrics?.ordersGrowth ?? 0).toFixed(1)}%
               </span>
               from last month
             </p>
@@ -266,22 +266,22 @@ export default function FranchiseDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {dashboardData.metrics.totalCustomers}
+              {dashboardData.metrics?.totalCustomers}
             </div>
             <p className="text-xs text-muted-foreground">
               <span
                 className={`flex items-center ${
-                  dashboardData.metrics.customersGrowth >= 0
+                  dashboardData.metrics?.customersGrowth >= 0
                     ? "text-green-600"
                     : "text-red-600"
                 }`}
               >
-                {dashboardData.metrics.customersGrowth >= 0 ? (
+                {dashboardData.metrics?.customersGrowth >= 0 ? (
                   <TrendingUp className="mr-1 h-3 w-3" />
                 ) : (
                   <TrendingDown className="mr-1 h-3 w-3" />
                 )}
-                {Math.abs(dashboardData.metrics.customersGrowth).toFixed(1)}%
+                {Math.abs(dashboardData.metrics?.customersGrowth ?? 0).toFixed(1)}%
               </span>
               from last month
             </p>
@@ -295,22 +295,22 @@ export default function FranchiseDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {dashboardData.metrics.totalProducts}
+              {dashboardData.metrics?.totalProducts}
             </div>
             <p className="text-xs text-muted-foreground">
               <span
                 className={`flex items-center ${
-                  dashboardData.metrics.productsGrowth >= 0
+                  dashboardData.metrics?.productsGrowth >= 0
                     ? "text-green-600"
                     : "text-red-600"
                 }`}
               >
-                {dashboardData.metrics.productsGrowth >= 0 ? (
+                {dashboardData.metrics?.productsGrowth >= 0 ? (
                   <TrendingUp className="mr-1 h-3 w-3" />
                 ) : (
                   <TrendingDown className="mr-1 h-3 w-3" />
                 )}
-                {Math.abs(dashboardData.metrics.productsGrowth).toFixed(1)}%
+                {Math.abs(dashboardData.metrics?.productsGrowth ?? 0).toFixed(1)}%
               </span>
               from last month
             </p>

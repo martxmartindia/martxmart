@@ -175,40 +175,6 @@ export default function CustomerDetailPage() {
             <p className="text-gray-500">Customer since {new Date(customer.createdAt).toLocaleDateString()}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/franchise-portal/customers/${customerId}/edit`)}
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete Customer</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this customer? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteCustomer} disabled={isDeleting}>
-                  {isDeleting ? "Deleting..." : "Delete Customer"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
       </div>
 
       {/* Customer Details */}
@@ -274,16 +240,6 @@ export default function CustomerDetailPage() {
               </div>
             </div>
           </CardContent>
-          <CardFooter>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => router.push(`/franchise-portal/customers/${customerId}/edit`)}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Information
-            </Button>
-          </CardFooter>
         </Card>
 
         <div className="md:col-span-2 space-y-6">
@@ -361,13 +317,6 @@ export default function CustomerDetailPage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter>
-              <Link href={`/franchise-portal/customers/${customerId}/orders`} className="w-full">
-                <Button variant="outline" className="w-full">
-                  View All Orders
-                </Button>
-              </Link>
-            </CardFooter>
           </Card>
         </div>
       </div>
@@ -379,13 +328,6 @@ export default function CustomerDetailPage() {
           Back to Customers
         </Button>
 
-        <Button
-          className="bg-orange-600 hover:bg-orange-700"
-          onClick={() => router.push(`/franchise-portal/customers/${customerId}/edit`)}
-        >
-          <Edit className="mr-2 h-4 w-4" />
-          Edit Customer
-        </Button>
       </div>
     </div>
   )

@@ -7,22 +7,22 @@ const roleAccessMap = {
   "/admin/dashboard": ["ADMIN"],
   "/admin/profile": ["ADMIN"],
   "/api/admin": ["ADMIN"],
-  
+
   // Author routes
   "/author": ["AUTHOR"],
   "/api/author": ["AUTHOR"],
-  
+
   // Franchise routes
   "/franchise": ["FRANCHISE"],
-  
+
   // Vendor routes
   "/vendor-portal": ["VENDOR"],
   "/api/vendor": ["VENDOR"],
   "/api/vendor-portal": ["VENDOR"],
-  
+
   // Franchise routes
   "/api/franchise": ["FRANCHISE"],
-  
+
   // Customer routes (all authenticated users can access customer areas)
   "/account": ["CUSTOMER", "ADMIN", "AUTHOR", "FRANCHISE"],
   "/api/account": ["CUSTOMER", "ADMIN", "AUTHOR", "FRANCHISE"],
@@ -38,7 +38,7 @@ export default withAuth(
     const userRole = token?.role as string;
 
     // Debug logging for route checking
-    console.log("🔍 [Middleware] Processing route:", pathname, "Role:", userRole);
+    // console.log("🔍 [Middleware] Processing route:", pathname, "Role:", userRole);
 
     // Check if the current path requires specific roles
     const pathRules = Object.entries(roleAccessMap).find(([path]) => {
@@ -47,14 +47,14 @@ export default withAuth(
 
     if (pathRules) {
       const [, allowedRoles] = pathRules;
-      console.log("🔍 [Middleware] Route requires roles:", allowedRoles, "User has:", userRole);
+      // console.log("🔍 [Middleware] Route requires roles:", allowedRoles, "User has:", userRole);
 
       // Check if user has required role
       if (!userRole || !allowedRoles.includes(userRole)) {
-        console.log("🚫 [Middleware] User doesn't have required role, redirecting");
+        // console.log("🚫 [Middleware] User doesn't have required role, redirecting");
         // Redirect to appropriate login page based on role
         let redirectUrl = "/auth/login";
-        
+
         if (userRole === "ADMIN") {
           redirectUrl = "/auth/admin/login";
         } else if (userRole === "AUTHOR") {
@@ -67,7 +67,7 @@ export default withAuth(
 
         return NextResponse.redirect(new URL(redirectUrl, req.url));
       } else {
-        console.log("✅ [Middleware] User has required role, allowing access");
+        // console.log("✅ [Middleware] User has required role, allowing access");
       }
     }
 
@@ -84,12 +84,12 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
-        
+
         // Public routes that don't require authentication
         const publicRoutes = [
           "/",
           "/auth/login",
-          "/auth/register", 
+          "/auth/register",
           "/auth/forgot-password",
           "/api/auth",
           "/api/public",
@@ -100,15 +100,15 @@ export default withAuth(
           "/api/cart",
           "/api/wishlist",
         ];
-        
-        
+
+
         // Check if route is public
-        const isPublicRoute = publicRoutes.some(route => 
+        const isPublicRoute = publicRoutes.some(route =>
           pathname.startsWith(route)
         );
-        
+
         // Debug logging for protected route checks
-        console.log("🔍 [Middleware] Checking route:", pathname, "Public:", isPublicRoute);
+        // console.log("🔍 [Middleware] Checking route:", pathname, "Public:", isPublicRoute);
 
         if (isPublicRoute) {
           return true;

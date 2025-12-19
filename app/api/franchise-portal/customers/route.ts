@@ -85,29 +85,30 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    // Calculate customer statistics
+    // Calculate customer statistics and format for frontend
     const customersWithStats = customers.map(customer => {
       const totalOrders = customer.orders.length;
       const totalSpent = customer.orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
-      const completedOrders = customer.orders.filter(order => order.status === "DELIVERED" || order.status === "COMPLETED").length;
       const lastOrderDate = customer.orders.length > 0
-        ? customer.orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
+        ? customer.orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt.toISOString()
         : null;
+
+      const primaryAddress = customer.addresses[0];
 
       return {
         id: customer.id,
-        name: customer.name,
+        name: customer.name || "Unknown",
         email: customer.email,
-        phone: customer.phone,
-        isVerified: customer.isVerified,
-        createdAt: customer.createdAt,
-        addresses: customer.addresses,
-        stats: {
-          totalOrders,
-          totalSpent,
-          completedOrders,
-          lastOrderDate,
-        },
+        phone: customer.phone || "",
+        address: primaryAddress ? `${primaryAddress.city}, ${primaryAddress.state}` : "",
+        city: primaryAddress?.city || "",
+        state: primaryAddress?.state || "",
+        pincode: primaryAddress?.zip || "",
+        totalOrders,
+        totalSpent,
+        lastOrderDate,
+        createdAt: customer.createdAt.toISOString(),
+        status: customer.isVerified ? "active" : "inactive" as const,
       };
     });
 
@@ -123,12 +124,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       customers: customersWithStats,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
     console.error("Franchise customers error:", error);

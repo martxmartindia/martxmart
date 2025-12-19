@@ -102,15 +102,6 @@ export function FranchiseSidebar() {
             </SidebarMenuItem>
 
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/franchise-portal/products")}>
-                <Link href="/franchise-portal/products">
-                  <Package2 className="h-4 w-4" />
-                  <span>Products</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isActive("/franchise-portal/customers")}>
                 <Link href="/franchise-portal/customers">
                   <Users className="h-4 w-4" />

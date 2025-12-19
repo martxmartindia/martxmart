@@ -56,6 +56,11 @@ export async function GET(request: NextRequest) {
                 images: true,
                 brand: true,
                 modelNumber: true,
+                category: {
+                  select: {
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -67,8 +72,21 @@ export async function GET(request: NextRequest) {
       ]);
 
       inventory = [...inventory, ...productInventory.map(item => ({
-        ...item,
+        id: item.id,
+        quantity: item.quantity,
+        minStock: item.minStock,
+        location: item.location,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
         type: "product",
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          price: Number(item.product.price),
+          sku: item.product.modelNumber || item.product.id.slice(0, 8).toUpperCase(),
+          category: item.product.category?.name || "Uncategorized",
+          brand: item.product.brand,
+        },
       }))];
       total += productTotal;
     }
@@ -92,6 +110,11 @@ export async function GET(request: NextRequest) {
                 images: true,
                 brand: true,
                 hsnCode: true,
+                category: {
+                  select: {
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -103,8 +126,21 @@ export async function GET(request: NextRequest) {
       ]);
 
       inventory = [...inventory, ...shoppingInventory.map(item => ({
-        ...item,
+        id: item.id,
+        quantity: item.quantity,
+        minStock: item.minStock,
+        location: item.location,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
         type: "shopping",
+        product: {
+          id: item.shopping.id,
+          name: item.shopping.name,
+          price: Number(item.shopping.price),
+          sku: item.shopping.hsnCode || item.shopping.id.slice(0, 8).toUpperCase(),
+          category: item.shopping.category?.name || "Uncategorized",
+          brand: item.shopping.brand,
+        },
       }))];
       total += shoppingTotal;
     }
