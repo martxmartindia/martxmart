@@ -118,7 +118,7 @@ export function FranchiseSidebar() {
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton>
+                  <SidebarMenuButton isActive={isActive("/franchise-portal/inventory")}>
                     <Boxes className="h-4 w-4" />
                     <span>Inventory</span>
                     <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
@@ -126,6 +126,11 @@ export function FranchiseSidebar() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild isActive={pathname === "/franchise-portal/inventory"}>
+                        <Link href="/franchise-portal/inventory">Overview</Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton asChild isActive={isActive("/franchise-portal/inventory/stock")}>
                         <Link href="/franchise-portal/inventory/stock">Stock Levels</Link>
@@ -154,7 +159,7 @@ export function FranchiseSidebar() {
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton>
+                  <SidebarMenuButton isActive={isActive("/franchise-portal/reports")}>
                     <BarChart3 className="h-4 w-4" />
                     <span>Reports</span>
                     <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
@@ -162,6 +167,11 @@ export function FranchiseSidebar() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild isActive={pathname === "/franchise-portal/reports"}>
+                        <Link href="/franchise-portal/reports">Overview</Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton asChild isActive={isActive("/franchise-portal/reports/sales")}>
                         <Link href="/franchise-portal/reports/sales">Sales</Link>
@@ -175,11 +185,6 @@ export function FranchiseSidebar() {
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton asChild isActive={isActive("/franchise-portal/reports/customers")}>
                         <Link href="/franchise-portal/reports/customers">Customers</Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={isActive("/franchise-portal/reports/financial")}>
-                        <Link href="/franchise-portal/reports/financial">Financial</Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   </SidebarMenuSub>

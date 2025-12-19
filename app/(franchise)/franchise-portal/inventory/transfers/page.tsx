@@ -1,53 +1,74 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowRightLeft, Plus, Eye } from "lucide-react"
-import Link from "next/link"
+import { ArrowRightLeft, Plus, Eye, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+
+interface Transfer {
+  id: string
+  productId: string
+  productName: string
+  fromLocation: string
+  toLocation: string
+  quantity: number
+  status: "pending" | "in_transit" | "completed" | "cancelled"
+  transferDate: string
+  notes?: string
+  createdBy: string
+}
 
 export default function TransfersPage() {
-  // Mock data for demonstration
-  const transfers = [
-    {
-      id: "TRF-001",
-      product: "CNC Lathe Machine",
-      fromLocation: "Main Warehouse",
-      toLocation: "Downtown Branch",
-      quantity: 2,
-      status: "completed",
-      date: "2024-01-15",
-    },
-    {
-      id: "TRF-002",
-      product: "Tractor Engine",
-      fromLocation: "Main Warehouse",
-      toLocation: "Rural Branch",
-      quantity: 1,
-      status: "in_transit",
-      date: "2024-01-14",
-    },
-    {
-      id: "TRF-003",
-      product: "Concrete Mixer",
-      fromLocation: "Downtown Branch",
-      toLocation: "Construction Site",
-      quantity: 3,
-      status: "pending",
-      date: "2024-01-13",
-    },
-  ]
+  const [transfers, setTransfers] = useState<Transfer[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchTransfers()
+  }, [])
+
+  const fetchTransfers = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch("/api/franchise-portal/inventory/transfers")
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch transfers")
+      }
+
+      const data = await response.json()
+      setTransfers(data.transfers || [])
+    } catch (error) {
+      console.error("Error fetching transfers:", error)
+      toast.error("Failed to load transfers")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       completed: { label: "Completed", className: "bg-green-100 text-green-800" },
       in_transit: { label: "In Transit", className: "bg-blue-100 text-blue-800" },
       pending: { label: "Pending", className: "bg-yellow-100 text-yellow-800" },
+      cancelled: { label: "Cancelled", className: "bg-red-100 text-red-800" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
     return <Badge className={config.className}>{config.label}</Badge>
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading transfers...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -95,7 +116,7 @@ export default function TransfersPage() {
                   transfers.map((transfer) => (
                     <TableRow key={transfer.id}>
                       <TableCell className="font-mono text-sm">{transfer.id}</TableCell>
-                      <TableCell className="font-medium">{transfer.product}</TableCell>
+                      <TableCell className="font-medium">{transfer.productName}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{transfer.fromLocation}</span>
@@ -105,7 +126,7 @@ export default function TransfersPage() {
                       </TableCell>
                       <TableCell>{transfer.quantity}</TableCell>
                       <TableCell>{getStatusBadge(transfer.status)}</TableCell>
-                      <TableCell>{transfer.date}</TableCell>
+                      <TableCell>{new Date(transfer.transferDate).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Button size="sm" variant="outline">
                           <Eye className="h-4 w-4" />

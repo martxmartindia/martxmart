@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowUpDown, Loader2, Plus, Search } from "lucide-react";
+import { AlertCircle, ArrowUpDown, Loader2, Search } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { debounce } from "lodash";
@@ -18,15 +18,13 @@ interface Product {
   sku: string;
   price: number;
   category: string;
-  inventory: {
-    id: string;
-    quantity: number;
-  } | null;
+  stock: number;
+  status: string;
 }
 
-type SortField = keyof Product | "inventory";
+type SortField = "name" | "sku" | "price" | "stock";
 
-export default function InventoryPage() {
+export default function StockPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,20 +33,13 @@ export default function InventoryPage() {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // Fetch products with authentication
+  // Fetch products
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/franchise-portal/products", {
-        headers: {
-          Authorization: `Bearer ${document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("token="))
-            ?.split("=")[1]}`,
-        },
-      });
+      const response = await fetch("/api/franchise-portal/products?limit=100");
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -57,9 +48,10 @@ export default function InventoryPage() {
         throw new Error("Failed to fetch products");
       }
 
-      const data: Product[] = await response.json();
-      setProducts(data);
-      setFilteredProducts(data);
+      const data = await response.json();
+      const productList = data.products || [];
+      setProducts(productList);
+      setFilteredProducts(productList);
     } catch (err: any) {
       console.error("Error fetching products:", err);
       setError(err.message || "Failed to load products. Please try again later.");
@@ -67,7 +59,7 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchProducts();
@@ -84,7 +76,7 @@ export default function InventoryPage() {
           const filtered = products.filter(
             (product) =>
               product.name.toLowerCase().includes(normalizedQuery) ||
-              product.sku.toLowerCase().includes(normalizedQuery) ||
+              (product.sku?.toLowerCase().includes(normalizedQuery)) ||
               product.category.toLowerCase().includes(normalizedQuery),
           );
           setFilteredProducts(filtered);
@@ -108,19 +100,12 @@ export default function InventoryPage() {
 
     setFilteredProducts((prev) => {
       const sorted = [...prev].sort((a, b) => {
-        let valueA: any, valueB: any;
-
-        if (field === "inventory") {
-          valueA = a.inventory?.quantity ?? 0;
-          valueB = b.inventory?.quantity ?? 0;
-        } else {
-          valueA = a[field];
-          valueB = b[field];
-        }
+        let valueA: any = a[field];
+        let valueB: any = b[field];
 
         if (typeof valueA === "string") {
           valueA = valueA.toLowerCase();
-          valueB = valueB.toLowerCase();
+          valueB = (valueB || "").toLowerCase();
         }
 
         if (valueA === valueB) return 0;
@@ -133,10 +118,10 @@ export default function InventoryPage() {
     });
   };
 
-  const getStockStatus = (quantity: number | undefined) => {
-    if (quantity === undefined) return { label: "Not Tracked", variant: "outline" as const };
-    if (quantity <= 0) return { label: "Out of Stock", variant: "destructive" as const };
-    if (quantity <= 10) return { label: "Low Stock", variant: "warning" as const };
+  const getStockStatus = (stock: number | undefined) => {
+    if (stock === undefined || stock === null) return { label: "Not Tracked", variant: "outline" as const };
+    if (stock <= 0) return { label: "Out of Stock", variant: "destructive" as const };
+    if (stock <= 10) return { label: "Low Stock", variant: "warning" as const };
     return { label: "In Stock", variant: "default" as const };
   };
 
@@ -164,21 +149,23 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
-        <Button asChild>
-          <Link href="/franchise-portal/inventory/adjustments/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Adjustment
-          </Link>
-        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Stock Levels</h1>
+          <p className="text-muted-foreground">View and manage product stock levels</p>
+        </div>
+        <Link href="/franchise-portal/inventory/adjustments">
+          <Button className="bg-orange-600 hover:bg-orange-700">
+            Manage Adjustments
+          </Button>
+        </Link>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Product Inventory</CardTitle>
-          <CardDescription>Manage your product stock levels and inventory</CardDescription>
+          <CardDescription>View product stock levels for your franchise</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center mb-6">
@@ -249,11 +236,11 @@ export default function InventoryPage() {
                       <Button
                         variant="ghost"
                         className="p-0 font-medium"
-                        onClick={() => handleSort("inventory")}
+                        onClick={() => handleSort("stock")}
                         aria-label="Sort by stock"
                       >
                         Stock
-                        {sortField === "inventory" && (
+                        {sortField === "stock" && (
                           <ArrowUpDown
                             className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`}
                           />
@@ -261,12 +248,11 @@ export default function InventoryPage() {
                       </Button>
                     </TableHead>
                     <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.map((product) => {
-                    const stockStatus = getStockStatus(product.inventory?.quantity);
+                    const stockStatus = getStockStatus(product.stock);
 
                     return (
                       <TableRow key={product.id}>
@@ -274,27 +260,13 @@ export default function InventoryPage() {
                           {product.name}
                           <div className="text-sm text-muted-foreground">{product.category}</div>
                         </TableCell>
-                        <TableCell>{product.sku}</TableCell>
+                        <TableCell>{product.sku || "N/A"}</TableCell>
                         <TableCell className="text-right">₹{product.price.toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                          {product.inventory?.quantity ?? "N/A"}
+                          {product.stock ?? "N/A"}
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge variant={stockStatus.variant as "destructive" | "outline" | "default" | "secondary"}>{stockStatus.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" asChild>
-                              <Link href={`/franchise-portal/inventory/products/${product.id}`}>
-                                View Details
-                              </Link>
-                            </Button>
-                            <Button variant="outline" size="sm" asChild>
-                              <Link href={`/franchise-portal/inventory/adjustments/new?productId=${product.id}`}>
-                                Adjust Stock
-                              </Link>
-                            </Button>
-                          </div>
                         </TableCell>
                       </TableRow>
                     );
