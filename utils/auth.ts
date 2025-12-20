@@ -41,7 +41,7 @@ export async function getSandboxAccessToken(): Promise<string> {
   if (!BASE_URL) {
     throw new Error('Sandbox base URL not configured');
   }
-
+ 
   try {
     const response = await axios.post(
       `${BASE_URL}/authenticate`,
