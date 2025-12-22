@@ -39,23 +39,38 @@ const ServicesPage = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 9;
 
   // Fetch services
-  const fetchServices = async () => {
+  const fetchServices = async (pageParam = 1) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get("/api/services");
-      const servicesData = res.data;
+      const params = new URLSearchParams({
+        page: pageParam.toString(),
+        limit: itemsPerPage.toString(),
+        ...(searchTerm && { search: searchTerm }),
+        ...(selectedCategory && selectedCategory !== 'all' && { category: selectedCategory }),
+        ...(sortBy && { sortBy, sortOrder })
+      });
+      
+      const res = await axios.get(`/api/services?${params}`);
+      const { services: servicesData, categories: apiCategories, total } = res.data;
+      
       setServices(servicesData);
       setFilteredServices(servicesData);
-
-      // Extract unique categories
-      const uniqueCategories = Array.from(
-        new Set(servicesData.map((service: Service) => service.category))
-      );
-      setCategories(uniqueCategories as string[]);
+      setTotalCount(total);
+      
+      // Use categories from API response, fallback to extracting from services if not available
+      if (apiCategories && apiCategories.length > 0) {
+        setCategories(apiCategories);
+      } else {
+        const uniqueCategories = Array.from(
+          new Set(servicesData.map((service: Service) => service.category))
+        );
+        setCategories(uniqueCategories as string[]);
+      }
     } catch (err) {
       console.error("Error fetching services:", err);
       setError("Failed to load services. Please try again later.");
@@ -71,6 +86,14 @@ const ServicesPage = () => {
       setFavorites(JSON.parse(savedFavorites));
     }
   }, []);
+
+  // Refetch when filters change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchServices(1); // Reset to first page when filters change
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, selectedCategory, sortBy, sortOrder]);
 
   // Debounced search handler
   const debouncedSearch = useCallback(
@@ -110,47 +133,11 @@ const ServicesPage = () => {
     localStorage.setItem("favorites", JSON.stringify(newFavorites));
   };
 
-  // Filter and sort services
-  const processedServices = useMemo(() => {
-    let filtered = services;
+  // Filter and sort services (now handled server-side)
+  const processedServices = services;
 
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (service) =>
-          (service.title?.toLowerCase()?.includes(searchTerm.toLowerCase()) ?? false) ||
-          (service.description?.toLowerCase()?.includes(searchTerm.toLowerCase()) ?? false) ||
-          (service.category?.toLowerCase()?.includes(searchTerm.toLowerCase()) ?? false)
-      );
-    }
-
-    // Apply category filter
-    if (selectedCategory) {
-      filtered = filtered.filter((service) => service.category === selectedCategory);
-    }
-
-    // Apply sorting
-    if (sortBy) {
-      filtered = [...filtered].sort((a, b) => {
-        if (sortBy === "price") {
-          return sortOrder === "asc" ? a.priceAmount - b.priceAmount : b.priceAmount - a.priceAmount;
-        } else if (sortBy === "processingTime") {
-          const timeA = parseInt(a.processingTime) || 0;
-          const timeB = parseInt(b.processingTime) || 0;
-          return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [services, searchTerm, selectedCategory, sortBy, sortOrder]);
-
-  // Paginate services
-  const paginatedServices = useMemo(() => {
-    const start = (page - 1) * itemsPerPage;
-    return processedServices.slice(start, start + itemsPerPage);
-  }, [processedServices, page]);
+  // Paginate services (client-side pagination for current page data)
+  const paginatedServices = services;
 
   // Reset filters
   const resetFilters = () => {
@@ -162,7 +149,7 @@ const ServicesPage = () => {
   };
 
   // Generate page numbers for pagination
-  const totalPages = Math.ceil(processedServices.length / itemsPerPage);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
   const pageNumbers = useMemo(() => {
     const maxPagesToShow = 5;
     const pages = [];
@@ -241,7 +228,19 @@ const ServicesPage = () => {
             >
               All Services
             </Badge>
-           
+            {categories.map((category) => (
+              <Badge
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                className="px-4 py-2 cursor-pointer text-sm bg-orange-600 hover:bg-orange-700 text-white"
+                onClick={() => handleCategoryFilter(category)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && handleCategoryFilter(category)}
+              >
+                {category}
+              </Badge>
+            ))}
           </div>
           <div className="flex gap-2">
             <Button
@@ -286,7 +285,7 @@ const ServicesPage = () => {
             className="text-center text-red-600 my-8"
           >
             <p>{error}</p>
-            <Button variant="outline" onClick={fetchServices} className="mt-4 rounded-xl">
+            <Button variant="outline" onClick={() => fetchServices()} className="mt-4 rounded-xl">
               Retry
             </Button>
           </motion.div>
@@ -415,12 +414,15 @@ const ServicesPage = () => {
         )}
 
         {/* Pagination */}
-        {processedServices.length > itemsPerPage && (
+        {totalCount > itemsPerPage && (
           <div className="mt-8 flex justify-center gap-2 items-center">
             <Button
               variant="outline"
               disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => {
+                setPage((p) => p - 1);
+                fetchServices(page - 1);
+              }}
               className="rounded-xl"
             >
               Previous
@@ -429,7 +431,10 @@ const ServicesPage = () => {
               <Button
                 key={pageNum}
                 variant={pageNum === page ? "default" : "outline"}
-                onClick={() => setPage(pageNum)}
+              onClick={() => {
+                setPage(pageNum);
+                fetchServices(pageNum);
+              }}
                 className={cn(
                   "rounded-xl",
                   pageNum === page && "bg-orange-600 text-white hover:bg-orange-700"
@@ -440,8 +445,11 @@ const ServicesPage = () => {
             ))}
             <Button
               variant="outline"
-              disabled={page * itemsPerPage >= processedServices.length}
-              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= totalPages}
+              onClick={() => {
+                setPage((p) => p + 1);
+                fetchServices(page + 1);
+              }}
               className="rounded-xl"
             >
               Next

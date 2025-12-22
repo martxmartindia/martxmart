@@ -46,6 +46,7 @@ const ServiceDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [formLoading, setFormLoading] = useState(false);
+  const [pincodeVerificationLoading, setPincodeVerificationLoading] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -97,6 +98,49 @@ const ServiceDetailPage = () => {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Handle pincode verification for pincode field
+    if (name === 'pincode' && value.length === 6) {
+      verifyPincode(value);
+    }
+    
+    // Clear city and state if pincode is being cleared
+    if (name === 'pincode' && value.length === 0) {
+      setFormData((prev) => ({ ...prev, city: '', state: '' }));
+    }
+  };
+
+  const verifyPincode = async (pincode: string) => {
+    if (!/^\d{6}$/.test(pincode)) {
+      toast.error("Please enter a valid 6-digit pincode");
+      return;
+    }
+
+    try {
+      setPincodeVerificationLoading(true);
+      const response = await axios.get(`/api/kyc/verify/pincode?pincode=${pincode}`);
+      
+      if (response.data.success) {
+        // Autofill city (district) and state
+        setFormData((prev) => ({
+          ...prev,
+          city: response.data.data.district,
+          state: response.data.data.state
+        }));
+        toast.success("Location details verified successfully");
+      } else {
+        toast.error(response.data.message || "Invalid pincode");
+      }
+    } catch (error: any) {
+      console.error("Pincode verification error:", error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to verify pincode. Please try again.");
+      }
+    } finally {
+      setPincodeVerificationLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -519,6 +563,7 @@ const ServiceDetailPage = () => {
                       value={formData.city}
                       onChange={handleInputChange}
                       className="rounded-lg"
+                      placeholder="Auto-filled from pincode"
                     />
                   </div>
                   <div>
@@ -529,18 +574,33 @@ const ServiceDetailPage = () => {
                       value={formData.state}
                       onChange={handleInputChange}
                       className="rounded-lg"
+                      placeholder="Auto-filled from pincode"
                     />
                   </div>
                 </div>
                 <div>
                   <Label htmlFor="pincode" className="text-sm font-medium">Pincode</Label>
-                  <Input
-                    id="pincode"
-                    name="pincode"
-                    value={formData.pincode}
-                    onChange={handleInputChange}
-                    className="rounded-lg"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="pincode"
+                      name="pincode"
+                      value={formData.pincode}
+                      onChange={handleInputChange}
+                      className="rounded-lg"
+                      placeholder="Enter 6-digit pincode"
+                      maxLength={6}
+                    />
+                    {pincodeVerificationLoading && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+                      </div>
+                    )}
+                  </div>
+                  {formData.pincode && formData.pincode.length !== 6 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Please enter a valid 6-digit pincode
+                    </p>
+                  )}
                 </div>
                 {/* Conditional fields */}
                 {service.category === "Business Registration" && service.slug === "gst-registration" && (
