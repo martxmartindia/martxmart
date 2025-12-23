@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useSession }  from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 export default function NewAddressPage() {
   const router = useRouter();
@@ -32,6 +32,17 @@ export default function NewAddressPage() {
     placeOfSupply: "",
   });
 
+  useEffect(() => {
+    if (session?.user) {
+      setFormData((prev) => ({
+        ...prev,
+        contactName: prev.contactName || session.user?.name || "",
+        phone: prev.phone || session.user?.phone || "",
+        email: prev.email || session.user?.email || "",
+      }));
+    }
+  }, [session]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -41,9 +52,8 @@ export default function NewAddressPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${
-            localStorage.getItem("auth-storage")?.split(" ")[1]
-          }`,
+          Authorization: `Bearer ${localStorage.getItem("auth-storage")?.split(" ")[1]
+            }`,
         },
         body: JSON.stringify(formData),
       });
@@ -212,14 +222,14 @@ export default function NewAddressPage() {
                 required
                 value={formData.state}
                 readOnly={true} // Make the input read-only to prevent user input her
-                // onChange={(e) =>
-                //   setFormData({ ...formData, state: e.target.value })
-                // }
+              // onChange={(e) =>
+              //   setFormData({ ...formData, state: e.target.value })
+              // }
               />
             </div>
           </div>
 
-          
+
 
           <div className="flex gap-4 pt-4">
             <Button type="submit" disabled={isSubmitting}>
