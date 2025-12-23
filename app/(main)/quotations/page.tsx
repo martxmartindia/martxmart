@@ -12,6 +12,15 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import Image from "next/image"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Plus } from "lucide-react"
 
 interface Address {
   id: string
@@ -36,18 +45,18 @@ export default function QuotationsPage() {
 
   useEffect(() => {
     setMounted(true)
-    
+
     if (typeof window === 'undefined') return
-    
+
     const data = localStorage.getItem('quotationData')
     if (!data) {
       router.push('/cart')
       return
     }
-    
+
     const parsedData = JSON.parse(data)
     setSelectedItems(parsedData.items?.map((item: any) => item.id) || [])
-    
+
     // Fetch user addresses
     fetchAddresses()
   }, [router])
@@ -65,8 +74,8 @@ export default function QuotationsPage() {
   }
 
   const handleItemToggle = (itemId: string) => {
-    setSelectedItems(prev => 
-      prev.includes(itemId) 
+    setSelectedItems(prev =>
+      prev.includes(itemId)
         ? prev.filter(id => id !== itemId)
         : [...prev, itemId]
     )
@@ -85,7 +94,7 @@ export default function QuotationsPage() {
       return
     }
     const parsedData = JSON.parse(data)
-    
+
     try {
       const response = await fetch('/api/quotations', {
         method: 'POST',
@@ -106,22 +115,22 @@ export default function QuotationsPage() {
       })
 
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'Failed to save quotation')
       }
-      
+
       const selectedItemsData = parsedData.items.filter((item: any) => selectedItems.includes(item.id))
       const addressData = addresses.find(addr => addr.id === selectedAddress)
-      
+
       const quotation = {
         id: result.quotation.id,
         user: {
           name: user?.name || 'Guest User',
           email: user?.email || 'guest@example.com',
           phone: user?.phone || 'N/A',
-          address: addressData ? 
-            `${addressData.addressLine1}, ${addressData.city}, ${addressData.state} - ${addressData.zip}` : 
+          address: addressData ?
+            `${addressData.addressLine1}, ${addressData.city}, ${addressData.state} - ${addressData.zip}` :
             'N/A'
         },
         items: selectedItemsData.map((item: any) => ({
@@ -135,7 +144,7 @@ export default function QuotationsPage() {
         tax: result.quotation.tax,
         total: result.quotation.total
       }
-      
+
       setQuotationData(quotation)
       setShowSelection(false)
       if (typeof window !== 'undefined') {
@@ -162,7 +171,7 @@ export default function QuotationsPage() {
   if (showSelection) {
     const data = typeof window !== 'undefined' ? localStorage.getItem('quotationData') : null
     const parsedData = data ? JSON.parse(data) : null
-    
+
     if (!parsedData) {
       router.push('/cart')
       return null
@@ -171,8 +180,24 @@ export default function QuotationsPage() {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4 max-w-4xl">
+          <Breadcrumb className="mb-6">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/">Home</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/cart">Cart</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Quotation</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           <h1 className="text-3xl font-bold text-gray-900 mb-8">Generate Quotation</h1>
-          
+
           {/* Product Selection */}
           <Card className="mb-6">
             <CardHeader>
@@ -209,8 +234,17 @@ export default function QuotationsPage() {
 
           {/* Address Selection */}
           <Card className="mb-6">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle>Select Address (Optional)</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/account/addresses/new')}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add New Address
+              </Button>
             </CardHeader>
             <CardContent>
               <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>

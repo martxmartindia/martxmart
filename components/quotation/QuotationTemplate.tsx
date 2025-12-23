@@ -10,12 +10,16 @@ import BankDetails from "./BankDetails"
 import Notes from "./Notes"
 import TermsAndConditions from "./TermsAndConditions"
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, Printer } from "lucide-react"
 
 interface QuotationTemplateProps {
   quotation: any
 }
 
 const QuotationTemplate: React.FC<QuotationTemplateProps> = ({ quotation }) => {
+  const router = useRouter()
+
   const handlePrint = () => {
     const style = document.createElement('style')
     style.textContent = `
@@ -46,8 +50,20 @@ const QuotationTemplate: React.FC<QuotationTemplateProps> = ({ quotation }) => {
       <Notes />
       <TermsAndConditions />
 
-      <div className="flex justify-end mt-4 print:hidden">
-        <Button onClick={handlePrint} className="ml-4">
+      <div className="flex justify-between items-center mt-8 print:hidden border-t pt-4">
+        <Button
+          variant="outline"
+          onClick={() => router.push('/cart')}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Cart
+        </Button>
+        <Button
+          onClick={handlePrint}
+          className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700"
+        >
+          <Printer className="h-4 w-4" />
           Print Quotation
         </Button>
       </div>
