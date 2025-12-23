@@ -89,24 +89,24 @@ export default function ProjectCategoryDetailsPage() {
 
   const filteredProjects = category?.projects
     ? category.projects
-        .filter(
-          (project) =>
-            (filterScheme === "All" || project.scheme === filterScheme) &&
-            (project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))),
-        )
-        .sort((a, b) => {
-          if (sortBy === "name") {
-            return a.name.localeCompare(b.name)
-          }
-          if (sortBy === "cost") {
-            return parseCost(a.estimatedCost) - parseCost(b.estimatedCost)
-          }
-          if (sortBy === "timeline") {
-            return parseTimeline(a.timeline) - parseTimeline(b.timeline)
-          }
-          return 0
-        })
+      .filter(
+        (project) =>
+          (filterScheme === "All" || project.scheme === filterScheme) &&
+          (project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))),
+      )
+      .sort((a, b) => {
+        if (sortBy === "name") {
+          return a.name.localeCompare(b.name)
+        }
+        if (sortBy === "cost") {
+          return parseCost(a.estimatedCost) - parseCost(b.estimatedCost)
+        }
+        if (sortBy === "timeline") {
+          return parseTimeline(a.timeline) - parseTimeline(b.timeline)
+        }
+        return 0
+      })
     : []
 
   if (loading) {
@@ -144,7 +144,7 @@ export default function ProjectCategoryDetailsPage() {
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/project-categor">y
+            <Link href="/project-reports">
               <Button className="bg-orange-600 hover:bg-orange-700 text-white">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Categories
@@ -186,7 +186,7 @@ export default function ProjectCategoryDetailsPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <Link href="/project-categories">
+      <Link href="/project-reports">
         <Button
           variant="ghost"
           className="mb-6 text-orange-600 hover:text-orange-700 flex items-center"
@@ -256,7 +256,7 @@ export default function ProjectCategoryDetailsPage() {
                     <CardTitle className="text-xl font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
                       {project.name}
                     </CardTitle>
-                  
+
                   </div>
                 </CardHeader>
                 <CardContent className="relative">

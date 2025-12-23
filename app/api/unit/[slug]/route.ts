@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {prisma} from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
-export async function GET( request: NextRequest,
+export async function GET(request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
-    
-  const slug = (await params).slug;
+
+    const slug = (await params).slug;
     const plant = await prisma.plant.findUnique({
       where: { slug },
       include: {
@@ -14,7 +14,7 @@ export async function GET( request: NextRequest,
           select: { name: true, slug: true },
         },
         products: {
-          select: { id: true, name: true, slug: true, price: true },
+          select: { id: true, name: true, slug: true, price: true, images: true },
         },
       },
     });

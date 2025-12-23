@@ -5,11 +5,14 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
+import UnitProductCard from "@/components/unit/UnitProductCard";
+
 interface Product {
   id: string;
   name: string;
   slug: string;
   price: number;
+  images: string[];
 }
 
 interface Unit {
@@ -103,8 +106,8 @@ export default function UnitDetailPage() {
         <div className="space-y-6">
           <div className="aspect-video overflow-hidden rounded-xl bg-gray-100">
             <Image
-            height={400}
-            width={600}
+              height={400}
+              width={600}
               src={unit.imageUrl || 'https://placehold.co/300x200'}
               alt={unit.name}
               className="w-full h-full object-cover"
@@ -133,7 +136,7 @@ export default function UnitDetailPage() {
                   <div className="font-medium">{unit.powerConsumption || 'N/A'}</div>
                 </div>
               </div>
-              
+
               <div className="space-y-3">
                 {unit.specifications.map((spec, index) => (
                   <div
@@ -153,16 +156,11 @@ export default function UnitDetailPage() {
           {unit.products.length > 0 && (
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Related Products</h2>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {unit.products.map((product) => (
-                  <div
-                    key={product.id}
-                    className="flex justify-between items-center p-4 bg-gray-50 rounded-lg"
-                  >
-                    <span className="font-medium text-gray-900">{product.name}</span>
-                    <span className="text-primary font-semibold">₹{product.price.toLocaleString()}</span>
-                  </div>
+                  <UnitProductCard key={product.id} product={product} />
                 ))}
+
               </div>
             </div>
           )}
