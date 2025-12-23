@@ -98,7 +98,7 @@ export function Navbar() {
         {/* Top bar */}
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/shopping" className="flex items-center space-x-2">
+          <Link href="/" className="flex items-center space-x-2">
             <Image src="/logo.png" alt="Logo" width={40} height={40} />
             <span className="font-bold text-xl">martXmart</span>
           </Link>

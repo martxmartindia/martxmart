@@ -757,20 +757,11 @@ const CategoryShowcase = () => {
                       Popular
                     </div>
                   )}
-                  {category.subcategories && category.subcategories.length > 0 && (
-                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
-                      {category.subcategories.length} subcategories
-                    </div>
-                  )}
                 </div>
                 <div className="text-center">
                   <h3 className="font-medium text-gray-900 group-hover:text-orange-600 transition-colors text-sm mb-1 line-clamp-2">
                     {category.name}
                   </h3>
-                  <div className="flex items-center justify-center gap-1 text-xs text-gray-500">
-                    <ShoppingCart className="w-3 h-3" />
-                    {category.productCount + category.shoppingCount} Products
-                  </div>
                 </div>
               </div>
             </Link>

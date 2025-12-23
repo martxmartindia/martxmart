@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, Heart, ShoppingCart, ArrowRight, Gift, Sparkles, Clock, TrendingUp, Zap, Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Heart, ShoppingCart, ArrowRight, Gift, Sparkles, Clock, TrendingUp, Zap, Package, ChevronLeft, ChevronRight, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +52,159 @@ interface HomeData {
   newArrivals: Product[];
   featuredProducts: Product[];
 }
+
+const CategoryShowcase = () => {
+  const [categories, setCategories] = useState<
+    Array<{
+      id: string;
+      name: string;
+      slug: string;
+      image: string;
+      productCount: number;
+      shoppingCount: number;
+      featured: boolean;
+      description: string;
+      subcategories?: Array<{
+        id: string;
+        name: string;
+        productCount: number;
+        shoppingCount: number;
+        image: string;
+      }>;
+    }>
+  >([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        // Fetch main categories with subcategories and product counts
+        const response = await fetch("/api/categories?type=SHOP&includeSubcategories=true&includeProducts=false");
+        if (!response.ok) {
+          throw new Error("Failed to fetch categories");
+        }
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setError("Failed to load categories");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <section className="py-8 sm:py-12 bg-gradient-to-br from-gray-50 to-white">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex justify-between items-center mb-6 sm:mb-8">
+            <div className="space-y-2">
+              <div className="h-6 sm:h-8 w-40 sm:w-48 bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-3 sm:h-4 w-32 sm:w-40 bg-gray-200 rounded animate-pulse" />
+            </div>
+            <div className="h-8 w-20 sm:w-24 bg-gray-200 rounded-lg animate-pulse" />
+          </div>
+          <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300">
+            {[1, 2, 3, 4, 5, 6].map((index) => (
+              <div
+                key={index}
+                className="flex-shrink-0 w-36 sm:w-40 h-44 sm:h-48 bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+              >
+                <div className="h-full flex flex-col">
+                  <div className="relative flex-1 mb-3 bg-gray-200 rounded-lg animate-pulse" />
+                  <div className="text-center space-y-2">
+                    <div className="h-3 sm:h-4 w-3/4 mx-auto bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-1/2 mx-auto bg-gray-200 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-8 bg-gray-50">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-red-600">{error}</p>
+        </div>
+      </section>
+    );
+  }
+
+  // Filter to show only main categories (those with subcategories or high product counts)
+  const mainCategories = categories.filter(category =>
+    (category.subcategories && category.subcategories.length > 0) ||
+    category.shoppingCount > 10
+  );
+
+  return (
+    <section className="py-8 sm:py-12 bg-gradient-to-br from-gray-50 to-white">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 gap-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Shop by Category</h2>
+            <p className="text-gray-600 text-sm sm:text-base">Explore our diverse range of products across all categories</p>
+          </div>
+          <Link
+            href="/shopping/category"
+            className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-lg transition-colors duration-300 self-start sm:self-auto"
+          >
+            View All <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="flex space-x-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          {(mainCategories || []).map((category, index) => (
+            <Link
+              key={category.id}
+              href={`/shopping/category/${category.slug}`}
+              className="group flex-shrink-0 w-36 sm:w-40 h-44 sm:h-48 relative overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg border border-gray-100 hover:border-orange-200 transition-all duration-300 snap-start hover:-translate-y-1"
+            >
+              <div className="p-3 sm:p-4 h-full flex flex-col">
+                <div className="relative flex-1 mb-3 bg-gray-50 rounded-lg overflow-hidden">
+                  <Image
+                    src={category.image || "/logo1.png"}
+                    alt={category.name}
+                    fill
+                    className="object-contain p-2 transition-transform duration-300 group-hover:scale-110"
+                  />
+                  {category.featured && (
+                    <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                      Popular
+                    </div>
+                  )}
+                </div>
+                <div className="text-center">
+                  <h3 className="font-medium text-gray-900 group-hover:text-orange-600 transition-colors text-sm mb-1 line-clamp-2">
+                    {category.name}
+                  </h3>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {mainCategories.length === 0 && !isLoading && (
+          <div className="text-center py-12">
+            <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Store className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 font-medium">No categories available</p>
+            <p className="text-gray-400 text-sm mt-1">Check back soon for new categories</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -451,46 +604,7 @@ const fetchHomeData = async () => {
         </section>
       )}
 
-      {/* Categories Grid */}
-      <section className="section-padding bg-gray-50">
-        <div className="container-custom">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Shop by Category</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Explore our diverse range of products across all categories
-            </p>
-          </div>
-          <div className="flex overflow-x-scroll gap-4 pb-4 mx-4 px-4" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-            {homeData.featuredCategories.map((category, index) => {
-              const colors = [
-                'from-blue-500 to-purple-600',
-                'from-green-500 to-teal-600', 
-                'from-orange-500 to-red-600',
-                'from-pink-500 to-rose-600',
-                'from-indigo-500 to-blue-600',
-                'from-yellow-500 to-orange-600'
-              ];
-              return (
-                <Link key={category.id} href={`/shopping/category/${category.slug}`} className="group flex-shrink-0">
-                  <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 min-w-[90px] border border-gray-100">
-                    <div className="p-4 text-center">
-                      <div className={`w-14 h-14 mx-auto mb-3 bg-gradient-to-br ${colors[index % colors.length]} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                        <Package className="h-7 w-7 text-white" />
-                      </div>
-                      <h3 className="font-semibold text-gray-800 group-hover:text-orange-600 transition-colors text-xs leading-tight line-clamp-2 mb-1">
-                        {category.name}
-                      </h3>
-                      <p className="text-xs text-gray-500 font-medium">
-                        {category._count.shopping} items
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <CategoryShowcase />
 
       {/* Deal of the Day */}
       {homeData.dealOfTheDay.length > 0 && (
