@@ -5,10 +5,10 @@ import { requireAuth, getAuthenticatedUser } from "@/lib/auth-helpers";
 
 // Update cart item quantity
 export async function PUT(req: NextRequest,
-  { params }: { params: Promise<{ itemId: string }> },
+  { params }: { params: Promise<{ itemid: string }> },
 ) {
   try {
-    const itemId = (await params).itemId;
+    const itemid = (await params).itemid;
 
     const result = await requireAuth();
     if (result instanceof NextResponse) return result;
@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest,
     }
 
     const cartItem = await prisma.shoppingCartItem.findUnique({
-      where: { id: itemId },
+      where: { id: itemid },
       include: {
         cart: true,
         shopping: true,
@@ -46,7 +46,7 @@ export async function PUT(req: NextRequest,
     }
 
     await prisma.shoppingCartItem.update({
-      where: { id:itemId },
+      where: { id: itemid },
       data: { quantity },
     });
 
@@ -77,10 +77,10 @@ export async function PUT(req: NextRequest,
 
 // Remove item from cart
 export async function DELETE(req: NextRequest,
-  { params }: { params: Promise<{ itemId: string }> },
+  { params }: { params: Promise<{ itemid: string }> },
 ) {
   try {
-    const itemId = (await params).itemId;
+    const itemid = (await params).itemid;
     const result = await requireAuth();
     if (result instanceof NextResponse) return result;
 
@@ -92,7 +92,7 @@ export async function DELETE(req: NextRequest,
     const userId = user.id;
 
     const cartItem = await prisma.shoppingCartItem.findUnique({
-      where: { id:itemId },
+      where: { id: itemid },
       include: { cart: true },
     });
 
@@ -105,7 +105,7 @@ export async function DELETE(req: NextRequest,
     }
 
     await prisma.shoppingCartItem.delete({
-      where: { id:itemId },
+      where: { id: itemid },
     });
 
     const updatedCart = await prisma.cart.findFirst({

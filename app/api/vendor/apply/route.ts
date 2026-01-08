@@ -189,16 +189,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT( request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) { 
-  const id = (await params).id;
+export async function PUT(request: NextRequest) {
   try {
     // Authenticate user
     const user = await getAuthenticatedUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    } 
+    }
 
     const body = await request.json();
 
@@ -213,7 +210,7 @@ export async function PUT( request: NextRequest,
 
     // Update application status
     const vendorApplication = await prisma.vendorApplication.update({
-      where: { id },
+      where: { id: body.applicationId },
       data: {
         status: body.status,
         verificationData: body.verificationData || undefined,

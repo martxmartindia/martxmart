@@ -37,21 +37,32 @@ const nextConfig: NextConfig = {
         hostname: "martxmart.com",
       },
     ],
+    localPatterns: [
+      {
+        pathname: "/logo.png",
+      },
+      {
+        pathname: "/logo.png",
+        search: "?height=*&width=*",
+      },
+    ],
   },
   experimental: {
     serverActions: {
       bodySizeLimit: "20mb",
     },
   },
-  serverRuntimeConfig: {
-    apiTimeout: 3000,
-  },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('@prisma/client');
-    }
-    return config;
-  },
+  // Remove serverRuntimeConfig as it's not supported in Next.js 16
+  // serverRuntimeConfig: {
+  //   apiTimeout: 3000,
+  // },
+  // Remove webpack config for Turbopack compatibility
+  // webpack: (config, { isServer }) => {
+  //   if (isServer) {
+  //     config.externals.push('@prisma/client');
+  //   }
+  //   return config;
+  // },
   async headers() {
     return [
       {

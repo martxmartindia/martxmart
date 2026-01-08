@@ -4,9 +4,9 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 
 export async function GET(request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { slug } = await params
+  const { id } = await params
   try {
     // Check authentication
     const session = await getServerSession(authOptions)
@@ -17,7 +17,6 @@ export async function GET(request: NextRequest,
         { status: 401 }
       )
     }
-    const id = slug
     if (!id) {
       return NextResponse.json(
         { error: 'Id is required' },
@@ -60,9 +59,9 @@ export async function GET(request: NextRequest,
 }
 
 export async function PUT(request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { slug } = await params
+  const { id } = await params
   try {
     // Check authentication
     const session = await getServerSession(authOptions)
@@ -75,7 +74,6 @@ export async function PUT(request: NextRequest,
     }
 
     const userId = session.user.id
-    const id = slug
 
     // Get blog to check ownership or admin status
     const existingBlog = await prisma.blog.findUnique({
@@ -152,9 +150,9 @@ export async function PUT(request: NextRequest,
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { slug } = await params
+  const { id } = await params
   try {
     // Check authentication
     const session = await getServerSession(authOptions)
@@ -167,7 +165,6 @@ export async function DELETE(
     }
 
     const userId = session.user.id
-    const id = slug
 
     // Get blog to check ownership or admin status
     const existingBlog = await prisma.blog.findUnique({
@@ -205,4 +202,3 @@ export async function DELETE(
     )
   }
 }
-
